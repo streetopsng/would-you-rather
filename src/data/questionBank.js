@@ -1,0 +1,71 @@
+export const QUESTION_BANK = {
+  Fun: [
+    { a: 'have a 4-day work week', b: 'have every Friday end at 2pm' },
+    { a: 'travel to a new country every year', b: 'take one dream vacation every five years' },
+    { a: 'always have the best seat at every event', b: 'always skip the queue' },
+    { a: 'be able to speak every language', b: 'be able to play every musical instrument' },
+    { a: 'have unlimited free food', b: 'unlimited free travel' },
+    { a: 'always know the best restaurant in town', b: 'always know the best place to hang out' },
+    { a: 'have a personal chef', b: 'a personal driver' },
+    { a: 'spend a month at the beach', b: 'a month in the mountains' },
+    { a: 'never have to wait for anything', b: 'never have to pay for delivery' },
+    { a: 'be able to teleport anywhere', b: 'be able to fly' },
+  ],
+  Work: [
+    { a: 'work completely remotely', b: 'completely from the office' },
+    { a: 'have no meetings for a month', b: 'no emails for a month' },
+    { a: 'work four long days', b: 'five shorter days' },
+    { a: 'have complete freedom over how you work', b: 'a very clear structure to follow' },
+    { a: 'work on one big project for a year', b: 'work on a new project every month' },
+    { a: 'have a manager who gives you lots of feedback', b: 'one who gives you complete independence' },
+    { a: 'always know exactly what is expected of you', b: 'always have freedom to decide what to work on' },
+    { a: 'work with your closest friends', b: 'work with people who challenge you' },
+    { a: 'start work at 6am and finish early', b: 'start at 11am and finish late' },
+    { a: 'have unlimited vacation days', b: 'a shorter workday every day' },
+  ],
+  Personality: [
+    { a: 'always say exactly what you think', b: 'always know exactly what others are thinking' },
+    { a: 'plan everything in advance', b: 'figure things out as you go' },
+    { a: 'always be the person making the decisions', b: 'always be the person giving the advice' },
+    { a: 'be extremely confident', b: 'extremely curious' },
+    { a: 'be known for being funny', b: 'known for being wise' },
+    { a: 'always have a clear answer', b: 'always ask the right question' },
+    { a: 'spend a weekend alone', b: 'spend a weekend with a big group' },
+    { a: 'be the first person to try something new', b: 'wait until you know it works' },
+    { a: 'be extremely organized', b: 'extremely creative' },
+    { a: 'be able to change your past', b: 'see your future' },
+  ],
+  Lifestyle: [
+    { a: 'live in a busy city', b: 'a quiet town' },
+    { a: 'have your dream home', b: 'travel whenever you want' },
+    { a: 'wake up early every day', b: 'stay up late every night' },
+    { a: 'spend your money on experiences', b: 'things you can keep' },
+    { a: 'have a year off work', b: 'work your dream job forever' },
+    { a: 'always have perfect weather', b: 'always have perfect Wi-Fi' },
+    { a: 'cook every meal yourself', b: 'never have to cook again' },
+    { a: 'have unlimited books', b: 'unlimited movies and shows' },
+    { a: 'live close to your family', b: 'live anywhere in the world' },
+    { a: 'have more free time', b: 'more money' },
+  ],
+  Silly: [
+    { a: 'fight one horse-sized duck', b: '100 duck-sized horses' },
+    { a: 'have to sing everything you say', b: 'dance everywhere you go' },
+    { a: 'have spaghetti for hair', b: 'sweat maple syrup' },
+    { a: 'have a tiny elephant as a pet', b: 'a giant hamster' },
+    { a: 'only be able to whisper', b: 'only be able to shout' },
+    { a: 'have your phone announce everything you do', b: 'have your thoughts appear as subtitles' },
+    { a: 'have to wear the same outfit every day', b: 'never wear the same outfit twice' },
+    { a: 'have a permanent clown horn whenever you laugh', b: 'squeak whenever you walk' },
+    { a: 'have your alarm clock chase you around the room', b: 'have it insult you until you wake up' },
+    { a: 'have a pet that can talk', b: 'a pet that can text you' },
+  ],
+}
+
+export const CATEGORIES = Object.keys(QUESTION_BANK)
+
+export const AVATAR_OPTIONS = [
+  '🦊', '🐻', '🐯', '🦁',
+  '🐺', '🦅', '🐬', '🦋',
+  '🐸', '🦄', '🐙', '🦜',
+  '🐧', '🦔', '🐵', '🦩'
+]

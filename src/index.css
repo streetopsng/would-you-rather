@@ -1,0 +1,82 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --color-brand-bg: #EDEAE4;
+  --color-brand-cream: #FAF7F2;
+  --color-brand-white: #FFFFFF;
+  --color-brand-orange: #F5821F;
+  --color-brand-orange-hover: #E8710A;
+  --color-brand-orange-light: #FDE8D0;
+  --color-brand-blue: #3B82F6;
+  --color-brand-blue-light: #DCE9FE;
+  --color-brand-black: #1A1A1A;
+  --color-brand-mid: #555555;
+  --color-brand-muted: #999999;
+  --color-brand-border: #E0DBD4;
+  --color-brand-red: #E8334A;
+  --color-brand-green: #22A855;
+
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+@layer base {
+  * {
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+  }
+  
+  body {
+    background-color: var(--color-brand-bg);
+    color: var(--color-brand-black);
+    font-family: var(--font-sans);
+    margin: 0;
+    min-height: 100vh;
+  }
+}
+
+/* Custom scrollbar hiding utility */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Keyframes */
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+@keyframes savePulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.06); }
+}
+
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+@keyframes rowIn {
+  from { opacity: 0; transform: translateX(8px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.animate-blink {
+  animation: blink 1.2s ease-in-out infinite;
+}
+
+.animate-save-pulse {
+  animation: savePulse 1.5s ease-in-out infinite;
+}
+
+.animate-slide-up {
+  animation: slideUp 0.3s ease;
+}
+
+.animate-row-in {
+  animation: rowIn 0.3s ease;
+}
