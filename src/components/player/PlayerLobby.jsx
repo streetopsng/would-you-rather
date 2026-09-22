@@ -1,5 +1,6 @@
 import React from 'react'
 import { useGame } from '../../context/useGame'
+import { returnToGummyGum } from '../../lib/gummygumSession'
 
 export default function PlayerLobby() {
   const { sessionName, player, joinedPlayers, startPlayerGame } = useGame()
@@ -10,8 +11,23 @@ export default function PlayerLobby() {
 
   return (
     <div className="w-full flex-1 flex flex-col justify-between">
+      {/* Top action bar */}
+      <div className="flex items-center justify-between px-4 pt-3 shrink-0">
+        <button
+          type="button"
+          onClick={() => returnToGummyGum()}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white border border-brand-border text-xs font-bold text-brand-black hover:bg-slate-50 transition-colors shadow-xs cursor-pointer"
+          title="Back to GummyGum"
+        >
+          <span>← Back to GummyGum</span>
+        </button>
+        <span className="text-[11px] font-black text-brand-muted uppercase tracking-wider">
+          Would You Rather
+        </span>
+      </div>
+
       {/* Session Header */}
-      <div className="text-center pt-6 pb-2 px-4">
+      <div className="text-center pt-3 pb-2 px-4">
         <span className="text-[10px] font-black uppercase tracking-widest text-brand-muted">
           Session
         </span>
