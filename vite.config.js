@@ -2,13 +2,33 @@ import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 
-function brevoDevServerPlugin() {
+function serverApiPlugin() {
   return {
-    name: 'brevo-dev-server-plugin',
+    name: 'server-api-plugin',
     configureServer(server) {
       server.middlewares.use(async (req, res, next) => {
+        const env = loadEnv(server.config.mode, process.cwd(), '')
+
+        // Firebase Config Endpoint for local dev
+        if (req.url === '/api/firebase-config' && req.method === 'GET') {
+          res.setHeader('Content-Type', 'application/json')
+          res.end(
+            JSON.stringify({
+              apiKey: env.FIREBASE_API_KEY || env.VITE_FIREBASE_API_KEY || '',
+              authDomain: env.FIREBASE_AUTH_DOMAIN || env.VITE_FIREBASE_AUTH_DOMAIN || '',
+              databaseURL: env.FIREBASE_DATABASE_URL || env.VITE_FIREBASE_DATABASE_URL || '',
+              projectId: env.FIREBASE_PROJECT_ID || env.VITE_FIREBASE_PROJECT_ID || '',
+              storageBucket: env.FIREBASE_STORAGE_BUCKET || env.VITE_FIREBASE_STORAGE_BUCKET || '',
+              messagingSenderId: env.FIREBASE_MESSAGING_SENDER_ID || env.VITE_FIREBASE_MESSAGING_SENDER_ID || '',
+              appId: env.FIREBASE_APP_ID || env.VITE_FIREBASE_APP_ID || '',
+              measurementId: env.FIREBASE_MEASUREMENT_ID || env.VITE_FIREBASE_MEASUREMENT_ID || '',
+            })
+          )
+          return
+        }
+
+        // Brevo Send Invite Endpoint for local dev
         if (req.url === '/api/send-invite' && req.method === 'POST') {
-          const env = loadEnv(server.config.mode, process.cwd(), '')
           const apiKey = env.BREVO_API_KEY || env.VITE_BREVO_API_KEY
 
           let body = ''
@@ -72,15 +92,51 @@ function brevoDevServerPlugin() {
 }
 
 // https://vite.dev/config/
-export default defineConfig({
-  plugins: [
-    react(),
-    tailwindcss(),
-    brevoDevServerPlugin(),
-  ],
-  test: {
-    globals: true,
-    environment: 'jsdom',
-    setupFiles: './src/test/setup.js',
-  },
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), '')
+
+  // Safely map both un-prefixed FIREBASE_* and prefixed VITE_FIREBASE_*
+  // so Vercel can accept them without public prefix warnings
+  const getVar = (k, vk) => process.env[k] || env[k] || process.env[vk] || env[vk] || ''
+
+  const firebaseDefines = {
+    'import.meta.env.VITE_FIREBASE_API_KEY': JSON.stringify(
+      getVar('FIREBASE_API_KEY', 'VITE_FIREBASE_API_KEY')
+    ),
+    'import.meta.env.VITE_FIREBASE_AUTH_DOMAIN': JSON.stringify(
+      getVar('FIREBASE_AUTH_DOMAIN', 'VITE_FIREBASE_AUTH_DOMAIN')
+    ),
+    'import.meta.env.VITE_FIREBASE_DATABASE_URL': JSON.stringify(
+      getVar('FIREBASE_DATABASE_URL', 'VITE_FIREBASE_DATABASE_URL')
+    ),
+    'import.meta.env.VITE_FIREBASE_PROJECT_ID': JSON.stringify(
+      getVar('FIREBASE_PROJECT_ID', 'VITE_FIREBASE_PROJECT_ID')
+    ),
+    'import.meta.env.VITE_FIREBASE_STORAGE_BUCKET': JSON.stringify(
+      getVar('FIREBASE_STORAGE_BUCKET', 'VITE_FIREBASE_STORAGE_BUCKET')
+    ),
+    'import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID': JSON.stringify(
+      getVar('FIREBASE_MESSAGING_SENDER_ID', 'VITE_FIREBASE_MESSAGING_SENDER_ID')
+    ),
+    'import.meta.env.VITE_FIREBASE_APP_ID': JSON.stringify(
+      getVar('FIREBASE_APP_ID', 'VITE_FIREBASE_APP_ID')
+    ),
+    'import.meta.env.VITE_FIREBASE_MEASUREMENT_ID': JSON.stringify(
+      getVar('FIREBASE_MEASUREMENT_ID', 'VITE_FIREBASE_MEASUREMENT_ID')
+    ),
+  }
+
+  return {
+    define: firebaseDefines,
+    plugins: [
+      react(),
+      tailwindcss(),
+      serverApiPlugin(),
+    ],
+    test: {
+      globals: true,
+      environment: 'jsdom',
+      setupFiles: './src/test/setup.js',
+    },
+  }
 })

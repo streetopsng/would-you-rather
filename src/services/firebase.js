@@ -20,7 +20,7 @@ const firebaseConfig = {
   measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
 }
 
-export const isFirebaseConfigured = Boolean(
+export let isFirebaseConfigured = Boolean(
   firebaseConfig.apiKey &&
   firebaseConfig.projectId &&
   firebaseConfig.apiKey !== 'your_firebase_api_key_here'
@@ -30,10 +30,11 @@ let app = null
 let db = null
 export let analytics = null
 
-if (isFirebaseConfigured) {
+function initFirebase(config) {
   try {
-    app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0]
+    app = getApps().length === 0 ? initializeApp(config) : getApps()[0]
     db = getFirestore(app)
+    isFirebaseConfigured = true
     if (typeof window !== 'undefined') {
       isSupported().then((supported) => {
         if (supported) {
@@ -46,6 +47,29 @@ if (isFirebaseConfigured) {
   }
 }
 
+if (isFirebaseConfigured) {
+  initFirebase(firebaseConfig)
+}
+
+// Fallback runtime loader for serverless environment configs without VITE_ prefix
+async function ensureFirebase() {
+  if (db) return db
+  if (typeof window !== 'undefined') {
+    try {
+      const res = await fetch('/api/firebase-config')
+      if (res.ok) {
+        const conf = await res.json()
+        if (conf.apiKey && conf.projectId) {
+          initFirebase(conf)
+          return db
+        }
+      }
+    } catch {
+      // Fallback to local store
+    }
+  }
+  return db
+}
 
 // Local in-memory / BroadcastChannel storage for local execution
 const localStore = new Map()
@@ -78,6 +102,7 @@ function broadcastLocalUpdate(sessionId, data) {
  * Create or initialize a game session
  */
 export async function createSession(sessionId, sessionData) {
+  await ensureFirebase()
   const payload = {
     ...sessionData,
     id: sessionId,
@@ -144,6 +169,7 @@ export function subscribeToSession(sessionId, callback) {
  * Update session state (e.g. status, round, results)
  */
 export async function updateSession(sessionId, updates) {
+  await ensureFirebase()
   if (isFirebaseConfigured && db) {
     try {
       const sessionRef = doc(db, 'sessions', sessionId)
