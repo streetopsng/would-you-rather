@@ -1,6 +1,7 @@
 import React from 'react'
 import { useGame } from '../../context/useGame'
 import Navbar from '../common/Navbar'
+import { closeGummyGumSession } from '../../lib/gummygumSession'
 
 export default function HostFinish() {
   const { sessionName, sessionQuestions, setCurrentScreen } = useGame()
@@ -25,10 +26,10 @@ export default function HostFinish() {
           <div className="mt-8 pt-6 border-t border-brand-border/60">
             <button
               type="button"
-              onClick={() => setCurrentScreen('homepage')}
+              onClick={() => closeGummyGumSession()}
               className="w-full py-4 px-6 rounded-full bg-brand-orange hover:bg-brand-orange-hover text-brand-black font-extrabold text-base shadow-[0_4px_0_theme(colors.brand.orange-hover)] active:translate-y-0.5 active:shadow-[0_2px_0_theme(colors.brand.orange-hover)] transition-all cursor-pointer"
             >
-              Back to home
+              Done — Return to GummyGum →
             </button>
           </div>
         </div>

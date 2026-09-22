@@ -1,5 +1,6 @@
 import React from 'react'
 import { useGame } from '../../context/useGame'
+import { returnToGummyGum } from '../../lib/gummygumSession'
 
 export default function PlayerFinish() {
   const { setCurrentScreen } = useGame()
@@ -20,10 +21,10 @@ export default function PlayerFinish() {
 
         <button
           type="button"
-          onClick={() => setCurrentScreen('homepage')}
+          onClick={() => returnToGummyGum()}
           className="w-full py-4 px-6 rounded-full bg-brand-orange hover:bg-brand-orange-hover text-brand-black font-extrabold text-base shadow-[0_4px_0_theme(colors.brand.orange-hover)] active:translate-y-0.5 active:shadow-[0_2px_0_theme(colors.brand.orange-hover)] transition-all cursor-pointer"
         >
-          Back to home
+          Done — Return to GummyGum →
         </button>
       </div>
     </div>

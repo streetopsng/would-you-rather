@@ -1,5 +1,6 @@
 import React from 'react'
 import { useGame } from '../../context/useGame'
+import { returnToGummyGum } from '../../lib/gummygumSession'
 
 export default function Navbar({ contextText }) {
   const { sessionName } = useGame()
@@ -16,9 +17,17 @@ export default function Navbar({ contextText }) {
       </div>
 
       <div className="flex items-center gap-2 sm:gap-3">
-        <span className="text-xs font-bold text-brand-muted uppercase tracking-wider truncate max-w-[180px] sm:max-w-xs text-right">
+        <span className="text-xs font-bold text-brand-muted uppercase tracking-wider truncate max-w-[150px] sm:max-w-xs text-right hidden sm:inline">
           {contextText || sessionName}
         </span>
+        <button
+          type="button"
+          onClick={() => returnToGummyGum()}
+          className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-white border border-brand-border text-xs font-bold text-brand-black hover:bg-slate-50 transition-colors shadow-xs cursor-pointer"
+          title="Back to GummyGum"
+        >
+          <span>← Back to GummyGum</span>
+        </button>
       </div>
     </header>
   )

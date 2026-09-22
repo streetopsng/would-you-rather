@@ -13,6 +13,7 @@ import {
 } from '../services/firebase'
 import { sendBulkGameInvites, isBrevoConfigured } from '../services/brevo'
 import { GameContext } from './GameContextBase'
+import { resolveGummyGumLaunch, returnToGummyGum, closeGummyGumSession } from '../lib/gummygumSession'
 
 
 function shuffle(array) {
@@ -72,6 +73,61 @@ export function GameProvider({ children }) {
       setToastMessage('')
     }, 2800)
   }, [])
+
+  // 0. Auto-resolve GummyGum launch (?ggt= or URL params)
+  const routedRef = useRef(false)
+  useEffect(() => {
+    if (routedRef.current) return
+    resolveGummyGumLaunch().then(async (launchSession) => {
+      if (routedRef.current) return
+      const params = new URLSearchParams(window.location.search)
+      const code = launchSession?.roomCode || params.get('pin') || params.get('sessionId') || params.get('code') || params.get('room')
+      const isHost = launchSession?.isHost ?? (
+        params.get('host') === 'true' ||
+        params.get('isHost') === 'true' ||
+        params.get('role') === 'host'
+      )
+      const queryEmail = (params.get('email') || launchSession?.player?.email || '').toLowerCase().trim()
+      const queryName = params.get('name') || launchSession?.player?.name || ''
+
+      if (code) {
+        routedRef.current = true
+        setSessionId(code)
+
+        if (isHost) {
+          const hostName = launchSession?.player?.name || queryName || 'Host'
+          setSessionName(`${hostName}'s Would You Rather`)
+          const qList = buildQuestions(15)
+          setSessionQuestions(qList)
+          await createSession(code, {
+            name: `${hostName}'s Would You Rather`,
+            rounds: 15,
+            questions: qList,
+            status: 'lobby',
+          }).catch(() => {})
+          setCurrentScreen('host-lobby')
+        } else {
+          // Participant Flow
+          const savedAv = queryEmail ? localStorage.getItem(`wyr_avatar_${queryEmail}`) : null
+          const savedN = (queryEmail ? localStorage.getItem(`wyr_name_${queryEmail}`) : null) || queryName
+          const alreadyJoined = queryEmail ? localStorage.getItem(`wyr_joined_${code}_${queryEmail}`) === 'true' : false
+
+          if (alreadyJoined && savedAv) {
+            const pId = 'p_' + Date.now()
+            const restoredPlayer = { id: pId, name: savedN || 'Teammate', av: savedAv, email: queryEmail }
+            setPlayer(restoredPlayer)
+            setPlayerEmail(queryEmail)
+            await joinSession(code, restoredPlayer).catch(() => {})
+            setCurrentScreen('player-lobby')
+          } else {
+            if (queryEmail) setPlayerEmail(queryEmail)
+            if (queryName) setPlayer((p) => ({ ...p, name: queryName, email: queryEmail, ...(savedAv && { av: savedAv }) }))
+            setCurrentScreen('player-identity')
+          }
+        }
+      }
+    })
+  }, [buildQuestions])
 
   // Build question list across categories
   const buildQuestions = useCallback((rounds) => {
@@ -254,14 +310,21 @@ export function GameProvider({ children }) {
 
   const savePlayerIdentity = async (name, av) => {
     const pId = 'player_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6)
-    const newPlayer = { id: pId, name, av, email: playerEmail }
+    const newPlayer = { id: pId, name: name.trim(), av, email: playerEmail }
     setPlayer(newPlayer)
     setCurrentScreen('player-saving')
 
-    const cleanId = (sessionName.trim() || 'team-session')
+    const cleanId = sessionId || (sessionName.trim() || 'team-session')
       .toLowerCase()
       .replace(/[^a-z0-9]/g, '-')
     setSessionId(cleanId)
+
+    if (playerEmail) {
+      const normEmail = playerEmail.toLowerCase().trim()
+      localStorage.setItem(`wyr_avatar_${normEmail}`, av)
+      localStorage.setItem(`wyr_name_${normEmail}`, name.trim())
+      localStorage.setItem(`wyr_joined_${cleanId}_${normEmail}`, 'true')
+    }
 
     // Register player in Firestore
     await joinSession(cleanId, newPlayer)
