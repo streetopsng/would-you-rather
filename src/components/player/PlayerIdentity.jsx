@@ -38,30 +38,32 @@ export default function PlayerIdentity() {
             <button
               type="button"
               onClick={() => setIsAvatarModalOpen(true)}
-              className="mt-3 px-4 py-2 rounded-full bg-brand-cream hover:bg-stone-200 text-xs font-bold text-brand-black transition-colors flex items-center gap-1.5 cursor-pointer"
+              className="mt-3 px-4 py-2 rounded-xl bg-brand-cream hover:bg-stone-200 text-xs font-bold text-brand-black transition-colors flex items-center gap-1.5 cursor-pointer border border-brand-border/60"
             >
               <span>🎨</span> Choose avatar
             </button>
           </div>
 
-          {/* Name Input */}
-          <div className="bg-white border border-brand-border rounded-2xl p-5 shadow-xs">
-            <label
-              htmlFor="playerName"
-              className="block text-xs font-black uppercase tracking-wider text-brand-mid mb-2"
-            >
-              Your name
-            </label>
-            <input
-              id="playerName"
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. Ayoola"
-              maxLength={20}
-              className="w-full bg-brand-cream/50 border border-brand-border rounded-xl px-4 py-3 text-sm font-bold text-brand-black outline-none focus:border-brand-orange focus:bg-white transition-colors"
-            />
-          </div>
+          {/* Name Input — only shown if player name not already known from GummyGum */}
+          {!player?.name && (
+            <div className="bg-white border border-brand-border rounded-2xl p-5 shadow-xs">
+              <label
+                htmlFor="playerName"
+                className="block text-xs font-black uppercase tracking-wider text-brand-mid mb-2"
+              >
+                Your name
+              </label>
+              <input
+                id="playerName"
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Enter your name"
+                maxLength={20}
+                className="w-full bg-brand-cream/50 border border-brand-border rounded-xl px-4 py-3 text-sm font-bold text-brand-black outline-none focus:border-brand-orange focus:bg-white transition-colors"
+              />
+            </div>
+          )}
         </div>
 
         {/* Enter Lobby Action */}
@@ -70,9 +72,9 @@ export default function PlayerIdentity() {
             type="button"
             onClick={handleContinue}
             disabled={!canContinue}
-            className={`w-full py-4 px-6 rounded-full font-extrabold text-base transition-all flex items-center justify-center gap-2 cursor-pointer ${
+            className={`w-full py-3.5 px-6 rounded-xl font-extrabold text-base transition-all flex items-center justify-center gap-2 cursor-pointer ${
               canContinue
-                ? 'bg-brand-orange hover:bg-brand-orange-hover text-brand-black shadow-[0_4px_0_theme(colors.brand.orange-hover)] active:translate-y-0.5 active:shadow-[0_2px_0_theme(colors.brand.orange-hover)]'
+                ? 'bg-brand-orange hover:bg-brand-orange-hover text-brand-black shadow-[0_3px_0_theme(colors.brand.orange-hover)] active:translate-y-0.5 active:shadow-[0_1px_0_theme(colors.brand.orange-hover)]'
                 : 'bg-brand-border text-brand-muted cursor-not-allowed opacity-60'
             }`}
           >
