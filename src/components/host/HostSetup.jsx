@@ -125,14 +125,14 @@ export default function HostSetup() {
                     type="text"
                     value={newName}
                     onChange={(e) => setNewName(e.target.value)}
-                    placeholder="Name (e.g. Sarah)"
+                    placeholder="Participant name"
                     className="bg-brand-cream/50 border border-brand-border rounded-xl px-3 py-2 text-xs font-medium text-brand-black outline-none focus:border-brand-orange focus:bg-white"
                   />
                   <input
                     type="email"
                     value={newEmail}
                     onChange={(e) => setNewEmail(e.target.value)}
-                    placeholder="sarah@company.com"
+                    placeholder="teammate@company.com"
                     className="bg-brand-cream/50 border border-brand-border rounded-xl px-3 py-2 text-xs font-medium text-brand-black outline-none focus:border-brand-orange focus:bg-white"
                   />
                   <input
