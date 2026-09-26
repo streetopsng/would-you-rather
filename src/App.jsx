@@ -5,6 +5,8 @@ import { useGame } from './context/useGame'
 // Common & Modals
 import Toast from './components/common/Toast'
 import CustomQuestionModal from './components/modals/CustomQuestionModal'
+import LoadingScreen from './components/common/LoadingScreen'
+import SessionExpiredModal from './components/modals/SessionExpiredModal'
 import { GummyGumLockedScreen, GummyGumCancelledScreen } from './components/common/GummyGumScreens'
 
 // Host Screens
@@ -25,14 +27,14 @@ import PlayerResults from './components/player/PlayerResults'
 import PlayerFinish from './components/player/PlayerFinish'
 
 function GameRouter() {
-  const { currentScreen, ggSession, ggChecked, isCancelled } = useGame()
+  const { currentScreen, ggSession, ggChecked, isCancelled, isSessionExpired } = useGame()
 
   if (!ggChecked) {
-    return <div className="h-screen w-full bg-[#EDEAE4]" />
+    return <LoadingScreen message="Connecting to GummyGum..." />
   }
 
   if (isCancelled || currentScreen === 'gg-cancelled') {
-    return <GummyGumCancelledScreen />
+    return <GummyGumCancelledScreen isHost={Boolean(ggSession?.isHost)} />
   }
 
   if (!ggSession) {
@@ -85,6 +87,7 @@ function GameRouter() {
 
       <Toast />
       <CustomQuestionModal />
+      {isSessionExpired && <SessionExpiredModal isHost={Boolean(ggSession?.isHost)} />}
     </div>
   )
 }
