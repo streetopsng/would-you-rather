@@ -13,14 +13,9 @@ export default function PlayerLobby() {
     <div className="w-full flex-1 flex flex-col justify-between">
       {/* Top action bar */}
       <div className="flex items-center justify-between px-4 pt-3 shrink-0">
-        <button
-          type="button"
-          onClick={() => returnToGummyGum()}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white border border-brand-border text-xs font-bold text-brand-black hover:bg-slate-50 transition-colors shadow-xs cursor-pointer"
-          title="Back to GummyGum"
-        >
-          <span>← Back to GummyGum</span>
-        </button>
+        <span className="text-xs font-black text-brand-orange uppercase tracking-wider">
+          GummyGum
+        </span>
         <span className="text-[11px] font-black text-brand-muted uppercase tracking-wider">
           Would You Rather
         </span>
@@ -107,7 +102,7 @@ export default function PlayerLobby() {
           <button
             type="button"
             onClick={startPlayerGame}
-            className="w-full py-4 px-6 rounded-full bg-brand-orange hover:bg-brand-orange-hover text-brand-black font-extrabold text-base shadow-[0_4px_0_theme(colors.brand.orange-hover)] active:translate-y-0.5 active:shadow-[0_2px_0_theme(colors.brand.orange-hover)] transition-all cursor-pointer flex items-center justify-center gap-2"
+            className="w-full py-4 px-6 rounded-xl bg-brand-orange hover:bg-brand-orange-hover text-brand-black font-extrabold text-base shadow-[0_4px_0_theme(colors.brand.orange-hover)] active:translate-y-0.5 active:shadow-[0_2px_0_theme(colors.brand.orange-hover)] transition-all cursor-pointer flex items-center justify-center gap-2"
           >
             <span>Start answering now</span>
             <span>&rsaquo;</span>

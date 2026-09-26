@@ -17,14 +17,18 @@ export default function PlayerFinish() {
         </h1>
         <p className="text-xs sm:text-sm text-brand-mid leading-relaxed max-w-xs mx-auto mb-8">
           Thanks for playing Would You Rather with your team. Hope you learned something surprising 👀
+          <br /><br />
+          <span className="font-semibold text-brand-black">You can safely close this tab now.</span>
         </p>
 
         <button
           type="button"
-          onClick={() => returnToGummyGum()}
-          className="w-full py-4 px-6 rounded-full bg-brand-orange hover:bg-brand-orange-hover text-brand-black font-extrabold text-base shadow-[0_4px_0_theme(colors.brand.orange-hover)] active:translate-y-0.5 active:shadow-[0_2px_0_theme(colors.brand.orange-hover)] transition-all cursor-pointer"
+          onClick={() => {
+            try { window.close() } catch {}
+          }}
+          className="w-full py-3.5 px-6 rounded-xl bg-brand-cream hover:bg-stone-200 border border-brand-border text-brand-black font-bold text-sm transition-all cursor-pointer"
         >
-          Done — Return to GummyGum →
+          Close Tab
         </button>
       </div>
     </div>

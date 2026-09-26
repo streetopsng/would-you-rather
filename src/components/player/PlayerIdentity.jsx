@@ -2,16 +2,22 @@ import React, { useState } from 'react'
 import { useGame } from '../../context/useGame'
 import Navbar from '../common/Navbar'
 import AvatarModal from '../modals/AvatarModal'
+import GameRulesModal from '../modals/GameRulesModal'
 
 export default function PlayerIdentity() {
   const { sessionName, player, savePlayerIdentity, setIsAvatarModalOpen } = useGame()
   const [name, setName] = useState(player?.name || '')
   const [avatar, setAvatar] = useState(player?.av || '🦊')
+  const [showRulesModal, setShowRulesModal] = useState(false)
 
   const canContinue = name.trim().length >= 2
 
   const handleContinue = () => {
     if (!canContinue) return
+    setShowRulesModal(true)
+  }
+
+  const handleConfirmRules = () => {
     savePlayerIdentity(name.trim(), avatar)
   }
 
@@ -91,6 +97,13 @@ export default function PlayerIdentity() {
         currentAvatar={avatar}
         onSelectAvatar={(newAv) => setAvatar(newAv)}
       />
+
+      {showRulesModal && (
+        <GameRulesModal
+          name={name.trim()}
+          onConfirm={handleConfirmRules}
+        />
+      )}
     </div>
   )
 }

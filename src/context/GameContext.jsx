@@ -54,6 +54,9 @@ export function GameProvider({ children }) {
   const [ggSession, setGgSession] = useState(null)
   const [ggChecked, setGgChecked] = useState(false)
   const [isCancelled, setIsCancelled] = useState(false)
+  const [isSessionExpired, setIsSessionExpired] = useState(false)
+  const [sessionCreatedAt, setSessionCreatedAt] = useState(null)
+  const [sessionStatus, setSessionStatus] = useState('lobby')
 
   // Host State
   const [hostQIdx, setHostQIdx] = useState(0)
@@ -115,6 +118,7 @@ export function GameProvider({ children }) {
             questions: qList,
             invitedCount: invCount,
             status: 'lobby',
+            createdAt: Date.now(),
           }).catch(() => {})
           setCurrentScreen('host-lobby')
         } else {
@@ -214,6 +218,21 @@ export function GameProvider({ children }) {
         }
         return
       }
+
+      if (data.status) setSessionStatus(data.status)
+      if (data.createdAt) setSessionCreatedAt(data.createdAt)
+
+      if (data.status === 'expired') {
+        setIsSessionExpired(true)
+        return
+      }
+
+      // Idle lobby sessions expire after 20 minutes of inactivity
+      if (data.status === 'lobby' && data.createdAt && Date.now() - data.createdAt >= 20 * 60 * 1000) {
+        setIsSessionExpired(true)
+        return
+      }
+
       if (data.invitedCount && !invitedCount) setInvitedCount(data.invitedCount)
       if (data.players) setJoinedPlayers(data.players)
       if (data.votes) setSessionVotes(data.votes)
@@ -229,6 +248,22 @@ export function GameProvider({ children }) {
       if (unsubscribe) unsubscribe()
     }
   }, [sessionId, currentScreen, ggSession, invitedCount])
+
+  // Real-time interval check every 10s for 20-minute lobby expiration (idle in lobby only!)
+  useEffect(() => {
+    if (sessionStatus !== 'lobby' || !sessionCreatedAt) return
+
+    const checkExpiration = () => {
+      const elapsed = Date.now() - sessionCreatedAt
+      if (elapsed >= 20 * 60 * 1000) {
+        setIsSessionExpired(true)
+      }
+    }
+
+    checkExpiration()
+    const interval = setInterval(checkExpiration, 10000)
+    return () => clearInterval(interval)
+  }, [sessionStatus, sessionCreatedAt])
 
   // Launch Session from Host Setup
   const launchHostSession = async () => {
@@ -255,6 +290,7 @@ export function GameProvider({ children }) {
       players: [],
       votes: {},
       status: 'lobby',
+      createdAt: Date.now(),
     })
 
     // Dispatch real email invites through Brevo
@@ -439,6 +475,7 @@ export function GameProvider({ children }) {
         ggSession,
         ggChecked,
         isCancelled,
+        isSessionExpired,
         invitedCount,
       }}
     >
