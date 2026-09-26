@@ -50,6 +50,10 @@ export function GameProvider({ children }) {
   const [sessionId, setSessionId] = useState('')
   const [joinedPlayers, setJoinedPlayers] = useState([])
   const [sessionVotes, setSessionVotes] = useState({})
+  const [invitedCount, setInvitedCount] = useState(null)
+  const [ggSession, setGgSession] = useState(null)
+  const [ggChecked, setGgChecked] = useState(false)
+  const [isCancelled, setIsCancelled] = useState(false)
 
   // Host State
   const [hostQIdx, setHostQIdx] = useState(0)
@@ -79,6 +83,8 @@ export function GameProvider({ children }) {
   useEffect(() => {
     if (routedRef.current) return
     resolveGummyGumLaunch().then(async (launchSession) => {
+      setGgSession(launchSession)
+      setGgChecked(true)
       if (routedRef.current) return
       const params = new URLSearchParams(window.location.search)
       const code = launchSession?.roomCode || params.get('pin') || params.get('sessionId') || params.get('code') || params.get('room')
@@ -87,6 +93,10 @@ export function GameProvider({ children }) {
         params.get('isHost') === 'true' ||
         params.get('role') === 'host'
       )
+      const queryInvited = params.get('invitedCount')
+      const invCount = launchSession?.invitedCount || (queryInvited ? parseInt(queryInvited, 10) : null)
+      if (invCount) setInvitedCount(invCount)
+
       const queryEmail = (params.get('email') || launchSession?.player?.email || '').toLowerCase().trim()
       const queryName = params.get('name') || launchSession?.player?.name || ''
 
@@ -103,6 +113,7 @@ export function GameProvider({ children }) {
             name: `${hostName}'s Would You Rather`,
             rounds: 15,
             questions: qList,
+            invitedCount: invCount,
             status: 'lobby',
           }).catch(() => {})
           setCurrentScreen('host-lobby')
@@ -121,7 +132,7 @@ export function GameProvider({ children }) {
             setCurrentScreen('player-lobby')
           } else {
             if (queryEmail) setPlayerEmail(queryEmail)
-            if (queryName) setPlayer((p) => ({ ...p, name: queryName, email: queryEmail, ...(savedAv && { av: savedAv }) }))
+            setPlayer({ id: '', name: queryName, email: queryEmail, av: savedAv || '🦊' })
             setCurrentScreen('player-identity')
           }
         }
@@ -195,7 +206,15 @@ export function GameProvider({ children }) {
   useEffect(() => {
     if (!sessionId) return
     const unsubscribe = subscribeToSession(sessionId, (data) => {
-      if (!data) return
+      if (!data || data.status === 'cancelled' || data.status === 'ended') {
+        if (ggSession?.isHost) {
+          returnToGummyGum()
+        } else if (ggSession) {
+          setIsCancelled(true)
+        }
+        return
+      }
+      if (data.invitedCount && !invitedCount) setInvitedCount(data.invitedCount)
       if (data.players) setJoinedPlayers(data.players)
       if (data.votes) setSessionVotes(data.votes)
       if (data.questions) setSessionQuestions(data.questions)
@@ -209,7 +228,7 @@ export function GameProvider({ children }) {
     return () => {
       if (unsubscribe) unsubscribe()
     }
-  }, [sessionId, currentScreen])
+  }, [sessionId, currentScreen, ggSession, invitedCount])
 
   // Launch Session from Host Setup
   const launchHostSession = async () => {
@@ -416,6 +435,11 @@ export function GameProvider({ children }) {
         // Config statuses
         isFirebaseConfigured,
         isBrevoConfigured,
+        // GummyGum Integration
+        ggSession,
+        ggChecked,
+        isCancelled,
+        invitedCount,
       }}
     >
       {children}

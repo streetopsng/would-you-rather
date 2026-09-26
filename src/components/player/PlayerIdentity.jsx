@@ -4,9 +4,9 @@ import Navbar from '../common/Navbar'
 import AvatarModal from '../modals/AvatarModal'
 
 export default function PlayerIdentity() {
-  const { sessionName, savePlayerIdentity, setIsAvatarModalOpen } = useGame()
-  const [name, setName] = useState('')
-  const [avatar, setAvatar] = useState('🦊')
+  const { sessionName, player, savePlayerIdentity, setIsAvatarModalOpen } = useGame()
+  const [name, setName] = useState(player?.name || '')
+  const [avatar, setAvatar] = useState(player?.av || '🦊')
 
   const canContinue = name.trim().length >= 2
 

@@ -5,6 +5,7 @@ import { useGame } from './context/useGame'
 // Common & Modals
 import Toast from './components/common/Toast'
 import CustomQuestionModal from './components/modals/CustomQuestionModal'
+import { GummyGumLockedScreen, GummyGumCancelledScreen } from './components/common/GummyGumScreens'
 
 // Host Screens
 import HostHome from './components/host/HostHome'
@@ -24,7 +25,19 @@ import PlayerResults from './components/player/PlayerResults'
 import PlayerFinish from './components/player/PlayerFinish'
 
 function GameRouter() {
-  const { currentScreen } = useGame()
+  const { currentScreen, ggSession, ggChecked, isCancelled } = useGame()
+
+  if (!ggChecked) {
+    return <div className="h-screen w-full bg-[#EDEAE4]" />
+  }
+
+  if (isCancelled || currentScreen === 'gg-cancelled') {
+    return <GummyGumCancelledScreen />
+  }
+
+  if (!ggSession) {
+    return <GummyGumLockedScreen />
+  }
 
   const renderScreen = () => {
     switch (currentScreen) {

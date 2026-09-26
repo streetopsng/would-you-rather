@@ -2,15 +2,43 @@ import React from 'react'
 import { useGame } from '../../context/useGame'
 import Navbar from '../common/Navbar'
 import { getPercentageWidthClass } from '../../utils/styleUtils'
+import { closeGummyGumSession } from '../../lib/gummygumSession'
+import { endSession } from '../../services/firebase'
 
 export default function HostLobby() {
-  const { sessionName, participants, joinedPlayers, startHostGame } = useGame()
+  const {
+    sessionName,
+    sessionId,
+    participants,
+    joinedPlayers,
+    startHostGame,
+    showToast,
+    ggSession,
+    invitedCount,
+  } = useGame()
 
+  const queryParams = new URLSearchParams(window.location.search)
+  const queryInvited = queryParams.get('invitedCount')
   const invited = participants.filter((p) => p.selected)
   const joinedCount = joinedPlayers.length
-  const totalCount = Math.max(invited.length, joinedCount)
-  const pctJoined = totalCount > 0 ? Math.round((joinedCount / totalCount) * 100) : 0
+  const totalCount =
+    invitedCount ||
+    ggSession?.invitedCount ||
+    (queryInvited ? parseInt(queryInvited, 10) : null) ||
+    Math.max(invited.length, joinedCount, 1)
+  const pctJoined = totalCount > 0 ? Math.min(100, Math.round((joinedCount / totalCount) * 100)) : 0
   const canStart = joinedCount >= 1
+
+  const handleCopyInviteLink = () => {
+    const hubUrl = ggSession?.hubUrl || 'https://gummygum.app'
+    const inviteUrl = `${hubUrl}/join?pin=${sessionId}`
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(inviteUrl)
+      showToast('1-click invite link copied to clipboard!')
+    } else {
+      showToast(`Link: ${inviteUrl}`)
+    }
+  }
 
   return (
     <div className="w-full flex-1 flex flex-col">
@@ -37,6 +65,35 @@ export default function HostLobby() {
                   pctJoined
                 )}`}
               />
+            </div>
+
+            {/* Share Invite Box */}
+            <div className="mt-5 pt-4 border-t border-brand-border/60 bg-brand-cream/30 rounded-xl p-3.5 text-left space-y-2.5">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-black uppercase text-brand-muted tracking-wider">
+                  Room PIN
+                </span>
+                <span className="text-base font-black font-mono text-brand-orange tracking-widest">
+                  {sessionId}
+                </span>
+              </div>
+              <div className="flex items-center justify-between gap-2 pt-1 border-t border-brand-border/40">
+                <div className="min-w-0 flex-1">
+                  <div className="text-[10px] font-black uppercase text-brand-muted tracking-wider mb-0.5">
+                    1-Click Invite Link
+                  </div>
+                  <span className="text-xs font-mono font-bold text-brand-black truncate block">
+                    {(ggSession?.hubUrl || 'https://gummygum.app')}/join?pin={sessionId}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleCopyInviteLink}
+                  className="px-3 py-1.5 bg-white border border-brand-border rounded-lg text-xs font-bold text-brand-orange hover:text-brand-orange-hover hover:bg-brand-orange-light/30 transition-all cursor-pointer shadow-xs shrink-0"
+                >
+                  Copy Link
+                </button>
+              </div>
             </div>
           </div>
 
@@ -100,6 +157,17 @@ export default function HostLobby() {
           >
             <span>Start game</span>
             <span>&rsaquo;</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              if (confirm('End this session and return to GummyGum?')) {
+                endSession(sessionId).finally(() => closeGummyGumSession())
+              }
+            }}
+            className="w-full max-w-md py-2.5 px-4 rounded-full border border-brand-border hover:border-red-300 text-xs font-bold text-brand-muted hover:text-red-600 bg-white hover:bg-red-50/50 transition-all cursor-pointer shadow-xs mt-1"
+          >
+            Close Session & Return to GummyGum
           </button>
           <p className="text-center text-xs text-brand-muted max-w-sm leading-relaxed">
             {canStart
