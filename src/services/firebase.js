@@ -140,6 +140,8 @@ export function subscribeToSession(sessionId, callback) {
       const unsubscribe = onSnapshot(sessionRef, (snapshot) => {
         if (snapshot.exists()) {
           callback(snapshot.data())
+        } else {
+          callback(null)
         }
       })
       return unsubscribe
@@ -212,3 +214,22 @@ export async function recordVote(sessionId, roundIndex, playerId, choice) {
   await updateSession(sessionId, { votes: updatedVotes })
   return updatedVotes
 }
+
+/**
+ * End session and mark status as ended
+ */
+export async function endSession(sessionId) {
+  await ensureFirebase()
+  const updates = { status: 'ended', updatedAt: new Date().toISOString() }
+  if (isFirebaseConfigured && db) {
+    try {
+      const sessionRef = doc(db, 'sessions', sessionId)
+      await updateDoc(sessionRef, updates)
+      return
+    } catch (e) {
+      console.warn('[Firebase] endSession error:', e)
+    }
+  }
+  broadcastLocalUpdate(sessionId, updates)
+}
+
