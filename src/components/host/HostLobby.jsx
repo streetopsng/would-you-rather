@@ -12,7 +12,6 @@ export default function HostLobby() {
     participants,
     joinedPlayers,
     startHostGame,
-    showToast,
     ggSession,
     invitedCount,
   } = useGame()
@@ -28,17 +27,6 @@ export default function HostLobby() {
     Math.max(invited.length, joinedCount, 1)
   const pctJoined = totalCount > 0 ? Math.min(100, Math.round((joinedCount / totalCount) * 100)) : 0
   const canStart = joinedCount >= 1
-
-  const handleCopyInviteLink = () => {
-    const hubUrl = ggSession?.hubUrl || 'https://gummygum.app'
-    const inviteUrl = `${hubUrl}/join?pin=${sessionId}`
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(inviteUrl)
-      showToast('1-click invite link copied to clipboard!')
-    } else {
-      showToast(`Link: ${inviteUrl}`)
-    }
-  }
 
   return (
     <div className="w-full flex-1 flex flex-col">
@@ -67,33 +55,11 @@ export default function HostLobby() {
               />
             </div>
 
-            {/* Share Invite Box */}
-            <div className="mt-5 pt-4 border-t border-brand-border/60 bg-brand-cream/30 rounded-xl p-3.5 text-left space-y-2.5">
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-black uppercase text-brand-muted tracking-wider">
-                  Room PIN
-                </span>
-                <span className="text-base font-black font-mono text-brand-orange tracking-widest">
-                  {sessionId}
-                </span>
-              </div>
-              <div className="flex items-center justify-between gap-2 pt-1 border-t border-brand-border/40">
-                <div className="min-w-0 flex-1">
-                  <div className="text-[10px] font-black uppercase text-brand-muted tracking-wider mb-0.5">
-                    1-Click Invite Link
-                  </div>
-                  <span className="text-xs font-mono font-bold text-brand-black truncate block">
-                    {(ggSession?.hubUrl || 'https://gummygum.app')}/join?pin={sessionId}
-                  </span>
-                </div>
-                <button
-                  type="button"
-                  onClick={handleCopyInviteLink}
-                  className="px-3 py-1.5 bg-white border border-brand-border rounded-lg text-xs font-bold text-brand-orange hover:text-brand-orange-hover hover:bg-brand-orange-light/30 transition-all cursor-pointer shadow-xs shrink-0"
-                >
-                  Copy Link
-                </button>
-              </div>
+            {/* GummyGum handles invites via email — no manual room code to share */}
+            <div className="mt-5 pt-4 border-t border-brand-border/60 text-center">
+              <p className="text-xs text-brand-muted leading-relaxed">
+                Teammates were invited by GummyGum via email — no code needed on their end.
+              </p>
             </div>
           </div>
 
