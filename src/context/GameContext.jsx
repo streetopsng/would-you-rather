@@ -105,6 +105,7 @@ export function GameProvider({ children }) {
 
       if (code) {
         routedRef.current = true
+        setIsSessionExpired(false)
         setSessionId(code)
 
         if (isHost) {
