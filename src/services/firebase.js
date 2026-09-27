@@ -2,6 +2,7 @@ import { initializeApp, getApps } from 'firebase/app'
 import {
   getFirestore,
   doc,
+  getDoc,
   setDoc,
   updateDoc,
   onSnapshot,
@@ -131,6 +132,24 @@ export async function createSession(sessionId, sessionData) {
 }
 
 /**
+ * Fetch the current session document once (e.g. to recover state on
+ * refresh/rejoin without blindly overwriting what's already there)
+ */
+export async function getSession(sessionId) {
+  await ensureFirebase()
+  if (isFirebaseConfigured && db) {
+    try {
+      const sessionRef = doc(db, 'sessions', sessionId)
+      const snapshot = await getDoc(sessionRef)
+      return snapshot.exists() ? snapshot.data() : null
+    } catch (e) {
+      console.warn('[Firebase] getSession failed, using local sync:', e)
+    }
+  }
+  return localStore.get(sessionId) || null
+}
+
+/**
  * Subscribe to real-time session changes
  */
 export function subscribeToSession(sessionId, callback) {
@@ -192,9 +211,14 @@ export async function updateSession(sessionId, updates) {
 
 /**
  * Real Player Join in session
+ *
+ * Reads the live session doc first (not the local fallback cache, which is
+ * never populated by the Firestore snapshot listener) so joining doesn't
+ * clobber every other player already in the roster. A player rejoining with
+ * the same email replaces their own stale entry rather than duplicating it.
  */
 export async function joinSession(sessionId, playerData) {
-  const current = localStore.get(sessionId) || { players: [] }
+  const current = await getSession(sessionId) || { players: [] }
   const existing = current.players || []
   const filtered = existing.filter((p) => p.email !== playerData.email && p.id !== playerData.id)
   const updatedPlayers = [...filtered, { ...playerData, joinedAt: new Date().toISOString() }]
@@ -204,9 +228,12 @@ export async function joinSession(sessionId, playerData) {
 
 /**
  * Real Player Vote in session
+ *
+ * Same live-read requirement as joinSession — otherwise each recorded vote
+ * would overwrite the votes map with only the current player's single vote.
  */
 export async function recordVote(sessionId, roundIndex, playerId, choice) {
-  const current = localStore.get(sessionId) || { votes: {} }
+  const current = await getSession(sessionId) || { votes: {} }
   const currentVotes = current.votes || {}
   const roundVotes = currentVotes[roundIndex] || {}
   const updatedRoundVotes = { ...roundVotes, [playerId]: choice }

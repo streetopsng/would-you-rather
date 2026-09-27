@@ -5,6 +5,7 @@ import {
 } from '../data/questionBank'
 import {
   createSession,
+  getSession,
   subscribeToSession,
   updateSession,
   joinSession,
@@ -81,6 +82,38 @@ export function GameProvider({ children }) {
     }, 2800)
   }, [])
 
+  // Build question list across categories
+  const buildQuestions = useCallback((rounds) => {
+    const perCat = Math.max(1, Math.floor(rounds / CATEGORIES.length))
+    let pool = []
+    CATEGORIES.forEach((cat) => {
+      const combined = [...QUESTION_BANK[cat], ...(customQuestions[cat] || [])]
+      const sliced = shuffle(combined).slice(0, perCat).map((q) => ({ ...q, cat }))
+      pool = pool.concat(sliced)
+    })
+    return shuffle(pool)
+  }, [customQuestions])
+
+  // Derive a stable, per-room player id from the GummyGum-verified email so a
+  // closed-tab/refresh rejoin reclaims the SAME player (and their votes)
+  // instead of colliding with a fresh randomly-generated id every time.
+  const stablePlayerId = (email) => {
+    const clean = (email || '').toLowerCase().trim().replace(/[^a-z0-9]/g, '_')
+    return clean ? `p_${clean}` : 'p_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6)
+  }
+
+  const screenForSessionStatus = (status) => {
+    switch (status) {
+      case 'in-progress':
+      case 'revealed':
+        return 'host-control'
+      case 'finished':
+        return 'host-finish'
+      default:
+        return 'host-lobby'
+    }
+  }
+
   // 0. Auto-resolve GummyGum launch (?ggt= or URL params)
   const routedRef = useRef(false)
   useEffect(() => {
@@ -109,19 +142,36 @@ export function GameProvider({ children }) {
         setSessionId(code)
 
         if (isHost) {
-          const hostName = launchSession?.player?.name || queryName || 'Host'
-          setSessionName(`${hostName}'s Would You Rather`)
-          const qList = buildQuestions(15)
-          setSessionQuestions(qList)
-          await createSession(code, {
-            name: `${hostName}'s Would You Rather`,
-            rounds: 15,
-            questions: qList,
-            invitedCount: invCount,
-            status: 'lobby',
-            createdAt: Date.now(),
-          }).catch(() => {})
-          setCurrentScreen('host-lobby')
+          // Recover an existing session (e.g. the host hard-refreshed mid-game)
+          // instead of blindly recreating it, which would wipe every joined
+          // player, vote and round in progress back to an empty lobby.
+          const existing = await getSession(code).catch(() => null)
+          if (existing && existing.status && existing.status !== 'cancelled' && existing.status !== 'ended') {
+            setSessionName(existing.name || `${launchSession?.player?.name || queryName || 'Host'}'s Would You Rather`)
+            setSessionQuestions(existing.questions || [])
+            setJoinedPlayers(existing.players || [])
+            setSessionVotes(existing.votes || {})
+            setSessionStatus(existing.status)
+            setSessionCreatedAt(existing.createdAt || null)
+            setHostQIdx(typeof existing.currentRound === 'number' ? existing.currentRound : 0)
+            setIsRevealed(existing.status === 'revealed')
+            if (existing.invitedCount) setInvitedCount(existing.invitedCount)
+            setCurrentScreen(screenForSessionStatus(existing.status))
+          } else {
+            const hostName = launchSession?.player?.name || queryName || 'Host'
+            setSessionName(`${hostName}'s Would You Rather`)
+            const qList = buildQuestions(15)
+            setSessionQuestions(qList)
+            await createSession(code, {
+              name: `${hostName}'s Would You Rather`,
+              rounds: 15,
+              questions: qList,
+              invitedCount: invCount,
+              status: 'lobby',
+              createdAt: Date.now(),
+            }).catch(() => {})
+            setCurrentScreen('host-lobby')
+          }
         } else {
           // Participant Flow
           const savedAv = queryEmail ? localStorage.getItem(`wyr_avatar_${queryEmail}`) : null
@@ -129,10 +179,14 @@ export function GameProvider({ children }) {
           const alreadyJoined = queryEmail ? localStorage.getItem(`wyr_joined_${code}_${queryEmail}`) === 'true' : false
 
           if (alreadyJoined && savedAv) {
-            const pId = 'p_' + Date.now()
+            const pId = stablePlayerId(queryEmail)
             const restoredPlayer = { id: pId, name: savedN || 'Teammate', av: savedAv, email: queryEmail }
             setPlayer(restoredPlayer)
             setPlayerEmail(queryEmail)
+            const savedProgress = queryEmail
+              ? parseInt(localStorage.getItem(`wyr_progress_${code}_${queryEmail}`) || '0', 10)
+              : 0
+            setPlayerQIdx(Number.isFinite(savedProgress) ? savedProgress : 0)
             await joinSession(code, restoredPlayer).catch(() => {})
             setCurrentScreen('player-lobby')
           } else {
@@ -144,18 +198,6 @@ export function GameProvider({ children }) {
       }
     })
   }, [buildQuestions])
-
-  // Build question list across categories
-  const buildQuestions = useCallback((rounds) => {
-    const perCat = Math.max(1, Math.floor(rounds / CATEGORIES.length))
-    let pool = []
-    CATEGORIES.forEach((cat) => {
-      const combined = [...QUESTION_BANK[cat], ...(customQuestions[cat] || [])]
-      const sliced = shuffle(combined).slice(0, perCat).map((q) => ({ ...q, cat }))
-      pool = pool.concat(sliced)
-    })
-    return shuffle(pool)
-  }, [customQuestions])
 
   // Real participant management
   const addParticipant = (name, email, dept = 'Team') => {
@@ -365,7 +407,7 @@ export function GameProvider({ children }) {
   }
 
   const savePlayerIdentity = async (name, av) => {
-    const pId = 'player_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6)
+    const pId = stablePlayerId(playerEmail)
     const newPlayer = { id: pId, name: name.trim(), av, email: playerEmail }
     setPlayer(newPlayer)
     setCurrentScreen('player-saving')
@@ -394,7 +436,9 @@ export function GameProvider({ children }) {
     if (!sessionQuestions.length) {
       setSessionQuestions(buildQuestions(roundCount))
     }
-    setPlayerQIdx(0)
+    // Don't stomp playerQIdx here — a rejoining player already had their
+    // in-progress round restored from localStorage; only a genuinely fresh
+    // player starts at 0 (its default state).
     setPlayerChoice(null)
     setCurrentScreen('player-question')
   }
@@ -415,6 +459,9 @@ export function GameProvider({ children }) {
 
   const nextPlayerQuestion = () => {
     const nextIdx = playerQIdx + 1
+    if (playerEmail && sessionId) {
+      localStorage.setItem(`wyr_progress_${sessionId}_${playerEmail.toLowerCase().trim()}`, String(nextIdx))
+    }
     if (nextIdx >= sessionQuestions.length) {
       setCurrentScreen('player-finish')
     } else {
