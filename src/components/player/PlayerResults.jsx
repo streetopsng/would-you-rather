@@ -1,6 +1,7 @@
 import React from 'react'
 import { useGame } from '../../context/useGame'
 import { getPercentageWidthClass } from '../../utils/styleUtils'
+import { IconChevronRight } from '../common/Icons'
 
 export default function PlayerResults() {
   const {
@@ -109,10 +110,10 @@ export default function PlayerResults() {
           <button
             type="button"
             onClick={nextPlayerQuestion}
-            className="w-full py-4 px-6 rounded-full bg-brand-orange hover:bg-brand-orange-hover text-brand-black font-extrabold text-base shadow-[0_4px_0_theme(colors.brand.orange-hover)] active:translate-y-0.5 active:shadow-[0_2px_0_theme(colors.brand.orange-hover)] transition-all cursor-pointer flex items-center justify-center gap-2"
+            className="w-full py-4 px-6 rounded-full bg-brand-orange hover:bg-brand-orange-hover text-brand-black font-extrabold text-base border border-brand-orange-hover shadow-xs transition-all cursor-pointer flex items-center justify-center gap-2"
           >
             <span>{isLastQuestion ? 'Finish' : 'Next question'}</span>
-            <span>&rsaquo;</span>
+            <IconChevronRight className="w-4 h-4" />
           </button>
         </div>
       </main>

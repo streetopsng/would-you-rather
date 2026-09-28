@@ -65,7 +65,7 @@ export default function PlayerQuestion() {
             disabled={Boolean(playerChoice)}
             className={`w-full p-5 rounded-2xl border-2 text-left flex items-center gap-4 transition-all cursor-pointer ${
               playerChoice === 'a'
-                ? 'border-brand-orange bg-brand-orange-light scale-[1.02] shadow-md'
+                ? 'border-brand-orange bg-brand-orange-light scale-[1.02] shadow-xs'
                 : playerChoice === 'b'
                 ? 'opacity-40 border-brand-border bg-white'
                 : 'border-brand-border bg-white hover:border-brand-orange hover:shadow-xs active:scale-[0.98]'
@@ -90,7 +90,7 @@ export default function PlayerQuestion() {
             disabled={Boolean(playerChoice)}
             className={`w-full p-5 rounded-2xl border-2 text-left flex items-center gap-4 transition-all cursor-pointer ${
               playerChoice === 'b'
-                ? 'border-brand-orange bg-brand-orange-light scale-[1.02] shadow-md'
+                ? 'border-brand-orange bg-brand-orange-light scale-[1.02] shadow-xs'
                 : playerChoice === 'a'
                 ? 'opacity-40 border-brand-border bg-white'
                 : 'border-brand-border bg-white hover:border-brand-orange hover:shadow-xs active:scale-[0.98]'

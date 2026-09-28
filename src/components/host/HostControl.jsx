@@ -2,6 +2,7 @@ import React from 'react'
 import { useGame } from '../../context/useGame'
 import Navbar from '../common/Navbar'
 import { getPercentageWidthClass } from '../../utils/styleUtils'
+import { IconChevronRight } from '../common/Icons'
 
 export default function HostControl() {
   const {
@@ -131,19 +132,19 @@ export default function HostControl() {
             <button
               type="button"
               onClick={revealHostResults}
-              className="w-full max-w-md py-4 px-6 rounded-full bg-brand-orange hover:bg-brand-orange-hover text-brand-black font-extrabold text-base shadow-[0_4px_0_theme(colors.brand.orange-hover)] active:translate-y-0.5 active:shadow-[0_2px_0_theme(colors.brand.orange-hover)] transition-all cursor-pointer flex items-center justify-center gap-2"
+              className="w-full max-w-md py-4 px-6 rounded-full bg-brand-orange hover:bg-brand-orange-hover text-brand-black font-extrabold text-base border border-brand-orange-hover shadow-xs transition-all cursor-pointer flex items-center justify-center gap-2"
             >
               <span>Reveal results</span>
-              <span>&rsaquo;</span>
+              <IconChevronRight className="w-4 h-4" />
             </button>
           ) : (
             <button
               type="button"
               onClick={nextHostQuestion}
-              className="w-full max-w-md py-4 px-6 rounded-full bg-brand-orange hover:bg-brand-orange-hover text-brand-black font-extrabold text-base shadow-[0_4px_0_theme(colors.brand.orange-hover)] active:translate-y-0.5 active:shadow-[0_2px_0_theme(colors.brand.orange-hover)] transition-all cursor-pointer flex items-center justify-center gap-2"
+              className="w-full max-w-md py-4 px-6 rounded-full bg-brand-orange hover:bg-brand-orange-hover text-brand-black font-extrabold text-base border border-brand-orange-hover shadow-xs transition-all cursor-pointer flex items-center justify-center gap-2"
             >
               <span>{isLastQuestion ? 'Finish session' : 'Next question'}</span>
-              <span>&rsaquo;</span>
+              <IconChevronRight className="w-4 h-4" />
             </button>
           )}
         </div>

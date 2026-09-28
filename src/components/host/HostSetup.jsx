@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { useGame } from '../../context/useGame'
 import Navbar from '../common/Navbar'
+import { IconCheck, IconClose, IconMail, IconUsers, IconChevronRight } from '../common/Icons'
 
 export default function HostSetup() {
   const {
@@ -104,7 +105,7 @@ export default function HostSetup() {
             {/* Email Dispatch Card for Host */}
             <div className="hidden md:block bg-brand-cream/70 border border-brand-border rounded-2xl p-4 text-xs text-brand-mid">
               <div className="font-bold text-brand-black flex items-center gap-1.5 mb-1">
-                <span>✉️</span> Automated Email Invitations
+                <IconMail className="w-3.5 h-3.5 text-brand-orange-hover" /> Automated Email Invitations
               </div>
               <p className="leading-relaxed text-[11px] text-brand-muted">
                 When you launch the session, GummyGum will automatically email direct invitation links to every selected teammate.
@@ -178,7 +179,7 @@ export default function HostSetup() {
 
               {participants.length === 0 ? (
                 <div className="py-8 text-center border-2 border-dashed border-brand-border rounded-xl">
-                  <span className="text-2xl">👥</span>
+                  <IconUsers className="w-6 h-6 mx-auto text-brand-muted" />
                   <div className="text-xs font-bold text-brand-black mt-2">No teammates added yet</div>
                   <p className="text-[11px] text-brand-muted mt-0.5">Use the form above to add your team members</p>
                 </div>
@@ -198,7 +199,7 @@ export default function HostSetup() {
                             : 'border-brand-border bg-white text-transparent'
                         }`}
                       >
-                        ✓
+                        <IconCheck className="w-3 h-3" />
                       </button>
 
                       <div className="w-7 h-7 rounded-full bg-brand-orange-light border border-brand-orange/60 flex items-center justify-center text-sm shrink-0">
@@ -218,9 +219,9 @@ export default function HostSetup() {
                         type="button"
                         onClick={() => removeParticipant(p.id)}
                         title="Remove teammate"
-                        className="text-stone-400 hover:text-rose-500 text-xs px-2 py-1 font-bold cursor-pointer transition-colors"
+                        className="text-stone-400 hover:text-rose-500 px-2 py-1 cursor-pointer transition-colors"
                       >
-                        ✕
+                        <IconClose className="w-3.5 h-3.5" />
                       </button>
                     </div>
                   ))}
@@ -238,12 +239,12 @@ export default function HostSetup() {
             disabled={selectedCount === 0}
             className={`w-full max-w-md py-4 px-6 rounded-full font-extrabold text-sm sm:text-base transition-all flex items-center justify-center gap-2 cursor-pointer ${
               selectedCount > 0
-                ? 'bg-brand-orange hover:bg-brand-orange-hover text-brand-black shadow-[0_4px_0_theme(colors.brand.orange-hover)] active:translate-y-0.5 active:shadow-[0_2px_0_theme(colors.brand.orange-hover)]'
+                ? 'bg-brand-orange hover:bg-brand-orange-hover text-brand-black border border-brand-orange-hover shadow-xs'
                 : 'bg-brand-border text-brand-muted cursor-not-allowed opacity-60'
             }`}
           >
             <span>Launch session — notify team</span>
-            <span>&rsaquo;</span>
+            <IconChevronRight className="w-4 h-4" />
           </button>
           <p className="text-center text-xs text-brand-muted max-w-sm leading-relaxed">
             GummyGum will email each selected teammate a direct link. You'll land in the lobby to watch them join.

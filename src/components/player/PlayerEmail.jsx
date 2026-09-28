@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { useGame } from '../../context/useGame'
+import { IconChevronRight } from '../common/Icons'
 
 export default function PlayerEmail() {
   const { sessionName, submitPlayerEmailInput, showToast } = useGame()
@@ -18,7 +19,7 @@ export default function PlayerEmail() {
 
   return (
     <div className="w-full flex-1 flex flex-col justify-center items-center p-4 sm:p-6">
-      <div className="max-w-md w-full bg-white border border-brand-border rounded-3xl p-8 sm:p-10 shadow-md text-center">
+      <div className="max-w-md w-full bg-white border border-brand-border rounded-3xl p-8 sm:p-10 shadow-xs text-center">
         <span className="text-xs font-black uppercase tracking-widest text-brand-orange">
           Confirm it's you
         </span>
@@ -44,12 +45,12 @@ export default function PlayerEmail() {
             disabled={!isValidEmail}
             className={`w-full py-4 px-6 rounded-full font-extrabold text-base transition-all flex items-center justify-center gap-2 cursor-pointer ${
               isValidEmail
-                ? 'bg-brand-orange hover:bg-brand-orange-hover text-brand-black shadow-[0_4px_0_theme(colors.brand.orange-hover)] active:translate-y-0.5 active:shadow-[0_2px_0_theme(colors.brand.orange-hover)]'
+                ? 'bg-brand-orange hover:bg-brand-orange-hover text-brand-black border border-brand-orange-hover shadow-xs'
                 : 'bg-brand-border text-brand-muted cursor-not-allowed opacity-60'
             }`}
           >
             <span>Continue</span>
-            <span>&rsaquo;</span>
+            <IconChevronRight className="w-4 h-4" />
           </button>
         </form>
       </div>
