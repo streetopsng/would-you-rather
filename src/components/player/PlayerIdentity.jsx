@@ -3,6 +3,7 @@ import { useGame } from '../../context/useGame'
 import Navbar from '../common/Navbar'
 import AvatarModal from '../modals/AvatarModal'
 import GameRulesModal from '../modals/GameRulesModal'
+import { IconPalette, IconArrowRight } from '../common/Icons'
 
 export default function PlayerIdentity() {
   const { sessionName, player, savePlayerIdentity, setIsAvatarModalOpen } = useGame()
@@ -32,7 +33,7 @@ export default function PlayerIdentity() {
             <button
               type="button"
               onClick={() => setIsAvatarModalOpen(true)}
-              className="w-24 h-24 rounded-full bg-brand-orange-light border-3 border-brand-black flex items-center justify-center text-5xl hover:scale-105 active:scale-95 transition-transform shadow-md cursor-pointer"
+              className="w-24 h-24 rounded-full bg-brand-orange-light border-3 border-brand-black flex items-center justify-center text-5xl hover:scale-105 active:scale-95 transition-transform shadow-xs cursor-pointer"
             >
               {avatar}
             </button>
@@ -46,7 +47,7 @@ export default function PlayerIdentity() {
               onClick={() => setIsAvatarModalOpen(true)}
               className="mt-3 px-4 py-2 rounded-xl bg-brand-cream hover:bg-stone-200 text-xs font-bold text-brand-black transition-colors flex items-center gap-1.5 cursor-pointer border border-brand-border/60"
             >
-              <span>🎨</span> Choose avatar
+              <IconPalette className="w-3.5 h-3.5" /> Choose avatar
             </button>
           </div>
 
@@ -80,12 +81,12 @@ export default function PlayerIdentity() {
             disabled={!canContinue}
             className={`w-full py-3.5 px-6 rounded-xl font-extrabold text-base transition-all flex items-center justify-center gap-2 cursor-pointer ${
               canContinue
-                ? 'bg-brand-orange hover:bg-brand-orange-hover text-brand-black shadow-[0_3px_0_theme(colors.brand.orange-hover)] active:translate-y-0.5 active:shadow-[0_1px_0_theme(colors.brand.orange-hover)]'
+                ? 'bg-brand-orange hover:bg-brand-orange-hover text-brand-black border border-brand-orange-hover shadow-xs'
                 : 'bg-brand-border text-brand-muted cursor-not-allowed opacity-60'
             }`}
           >
             <span>Enter the lobby</span>
-            <span>&rarr;</span>
+            <IconArrowRight className="w-4 h-4" />
           </button>
           <p className="text-xs text-brand-muted">
             {canContinue ? 'Looking good!' : 'Enter your name to continue'}

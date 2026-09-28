@@ -1,13 +1,16 @@
 import React from 'react'
 import { useGame } from '../../context/useGame'
+import { IconHelpCircle, IconChevronRight } from '../common/Icons'
 
 export default function PlayerHome() {
   const { sessionName, setCurrentScreen } = useGame()
 
   return (
     <div className="w-full flex-1 flex flex-col justify-center items-center p-4 sm:p-6">
-      <div className="max-w-md w-full bg-white border border-brand-border rounded-3xl p-8 sm:p-10 shadow-md text-center">
-        <div className="text-5xl mb-4">🤔</div>
+      <div className="max-w-md w-full bg-white border border-brand-border rounded-3xl p-8 sm:p-10 shadow-xs text-center">
+        <div className="w-16 h-16 rounded-2xl bg-brand-orange-light border border-brand-orange/60 flex items-center justify-center text-brand-orange-hover mx-auto mb-4">
+          <IconHelpCircle className="w-8 h-8" />
+        </div>
         <span className="text-xs font-black uppercase tracking-widest text-brand-orange">
           You're invited
         </span>
@@ -28,10 +31,10 @@ export default function PlayerHome() {
         <button
           type="button"
           onClick={() => setCurrentScreen('player-email')}
-          className="w-full py-4 px-6 rounded-full bg-brand-orange hover:bg-brand-orange-hover text-brand-black font-extrabold text-base shadow-[0_4px_0_theme(colors.brand.orange-hover)] active:translate-y-0.5 active:shadow-[0_2px_0_theme(colors.brand.orange-hover)] transition-all cursor-pointer flex items-center justify-center gap-2"
+          className="w-full py-4 px-6 rounded-full bg-brand-orange hover:bg-brand-orange-hover text-brand-black font-extrabold text-base border border-brand-orange-hover shadow-xs transition-all cursor-pointer flex items-center justify-center gap-2"
         >
           <span>Join the game</span>
-          <span>&rsaquo;</span>
+          <IconChevronRight className="w-4 h-4" />
         </button>
 
         <p className="text-xs text-brand-muted mt-4">

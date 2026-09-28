@@ -4,6 +4,7 @@ import Navbar from '../common/Navbar'
 import { getPercentageWidthClass } from '../../utils/styleUtils'
 import { closeGummyGumSession } from '../../lib/gummygumSession'
 import { endSession } from '../../services/firebase'
+import { IconCheck, IconChevronRight } from '../common/Icons'
 
 export default function HostLobby() {
   const {
@@ -100,7 +101,7 @@ export default function HostLobby() {
                     </div>
 
                     <div className="text-xs font-extrabold text-brand-green flex items-center gap-1 shrink-0">
-                      <span>✓</span> Joined
+                      <IconCheck className="w-3.5 h-3.5" /> Joined
                     </div>
                   </div>
                 ))}
@@ -117,12 +118,12 @@ export default function HostLobby() {
             disabled={!canStart}
             className={`w-full max-w-md py-4 px-6 rounded-full font-extrabold text-sm sm:text-base transition-all flex items-center justify-center gap-2 cursor-pointer ${
               canStart
-                ? 'bg-brand-orange hover:bg-brand-orange-hover text-brand-black shadow-[0_4px_0_theme(colors.brand.orange-hover)] active:translate-y-0.5 active:shadow-[0_2px_0_theme(colors.brand.orange-hover)]'
+                ? 'bg-brand-orange hover:bg-brand-orange-hover text-brand-black border border-brand-orange-hover shadow-xs'
                 : 'bg-brand-border text-brand-muted cursor-not-allowed opacity-60'
             }`}
           >
             <span>Start game</span>
-            <span>&rsaquo;</span>
+            <IconChevronRight className="w-4 h-4" />
           </button>
           <button
             type="button"

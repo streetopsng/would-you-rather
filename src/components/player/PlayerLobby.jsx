@@ -1,6 +1,7 @@
 import React from 'react'
 import { useGame } from '../../context/useGame'
 import { returnToGummyGum } from '../../lib/gummygumSession'
+import { IconCheck, IconChevronRight } from '../common/Icons'
 
 export default function PlayerLobby() {
   const { sessionName, player, joinedPlayers, startPlayerGame } = useGame()
@@ -50,8 +51,8 @@ export default function PlayerLobby() {
                 {player.email || 'Ready to play'}
               </div>
             </div>
-            <div className="px-3 py-1 rounded-full bg-brand-orange-light border border-brand-orange text-brand-orange-hover text-xs font-black">
-              ✓ Ready
+            <div className="px-3 py-1 rounded-full bg-brand-orange-light border border-brand-orange text-brand-orange-hover text-xs font-black flex items-center gap-1">
+              <IconCheck className="w-3 h-3" /> Ready
             </div>
           </div>
 
@@ -102,10 +103,10 @@ export default function PlayerLobby() {
           <button
             type="button"
             onClick={startPlayerGame}
-            className="w-full py-4 px-6 rounded-xl bg-brand-orange hover:bg-brand-orange-hover text-brand-black font-extrabold text-base shadow-[0_4px_0_theme(colors.brand.orange-hover)] active:translate-y-0.5 active:shadow-[0_2px_0_theme(colors.brand.orange-hover)] transition-all cursor-pointer flex items-center justify-center gap-2"
+            className="w-full py-4 px-6 rounded-xl bg-brand-orange hover:bg-brand-orange-hover text-brand-black font-extrabold text-base border border-brand-orange-hover shadow-xs transition-all cursor-pointer flex items-center justify-center gap-2"
           >
             <span>Start answering now</span>
-            <span>&rsaquo;</span>
+            <IconChevronRight className="w-4 h-4" />
           </button>
         </div>
       </main>

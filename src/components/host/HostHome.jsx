@@ -1,5 +1,6 @@
 import React from 'react'
 import { useGame } from '../../context/useGame'
+import { IconBolt, IconBarChart, IconChevronRight } from '../common/Icons'
 
 export default function HostHome() {
   const { setCurrentScreen } = useGame()
@@ -23,7 +24,7 @@ export default function HostHome() {
 
       {/* Action Sheet / Card */}
       <div className="flex-1 -mt-6 max-w-xl w-full mx-auto px-4 sm:px-6 pb-12 flex flex-col">
-        <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-md border border-brand-border flex-1 flex flex-col justify-between">
+        <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-xs border border-brand-border flex-1 flex flex-col justify-between">
           <div className="space-y-4">
             <h2 className="text-lg sm:text-xl font-black text-brand-black text-center sm:text-left">
               Host a Team Session
@@ -35,12 +36,12 @@ export default function HostHome() {
             {/* Quick feature list for desktop */}
             <div className="hidden sm:grid grid-cols-2 gap-3 pt-2">
               <div className="p-3 rounded-2xl bg-brand-cream/80 border border-brand-border/60">
-                <span className="text-base">⚡</span>
+                <IconBolt className="w-4 h-4 text-brand-orange" />
                 <div className="text-xs font-bold text-brand-black mt-1">Zero Setup for Players</div>
                 <div className="text-[11px] text-brand-muted">Teammates join via email link without creating accounts</div>
               </div>
               <div className="p-3 rounded-2xl bg-brand-cream/80 border border-brand-border/60">
-                <span className="text-base">📊</span>
+                <IconBarChart className="w-4 h-4 text-brand-orange" />
                 <div className="text-xs font-bold text-brand-black mt-1">Live Team Polls</div>
                 <div className="text-[11px] text-brand-muted">Instant percentage bars and surprise picks</div>
               </div>
@@ -50,10 +51,10 @@ export default function HostHome() {
           <div className="mt-8 space-y-3">
             <button
               onClick={() => setCurrentScreen('host-setup')}
-              className="w-full py-4 px-6 rounded-full bg-brand-orange hover:bg-brand-orange-hover text-brand-black font-extrabold text-base shadow-[0_4px_0_theme(colors.brand.orange-hover)] active:translate-y-0.5 active:shadow-[0_2px_0_theme(colors.brand.orange-hover)] transition-all cursor-pointer flex items-center justify-center gap-2"
+              className="w-full py-4 px-6 rounded-full bg-brand-orange hover:bg-brand-orange-hover text-brand-black font-extrabold text-base border border-brand-orange-hover shadow-xs transition-all cursor-pointer flex items-center justify-center gap-2"
             >
               <span>Create a game</span>
-              <span>&rsaquo;</span>
+              <IconChevronRight className="w-4 h-4" />
             </button>
 
             <p className="text-center text-xs text-brand-muted leading-relaxed">
