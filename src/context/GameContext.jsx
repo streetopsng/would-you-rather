@@ -253,7 +253,15 @@ export function GameProvider({ children }) {
   useEffect(() => {
     if (!sessionId) return
     const unsubscribe = subscribeToSession(sessionId, (data) => {
-      if (!data || data.status === 'cancelled' || data.status === 'ended') {
+      // A missing snapshot only ever means the createSession write hasn't
+      // landed yet (there's a real race right after launch where this
+      // listener attaches before the doc exists) or a transient read glitch —
+      // this app always signals real cancellation via an explicit status
+      // field, never by deleting the doc, so treat "no data yet" as still
+      // loading rather than a genuine host-cancellation event.
+      if (!data) return
+
+      if (data.status === 'cancelled' || data.status === 'ended') {
         if (ggSession?.isHost) {
           returnToGummyGum()
         } else if (ggSession) {

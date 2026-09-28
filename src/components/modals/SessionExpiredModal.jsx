@@ -1,5 +1,6 @@
 import React from 'react'
 import { returnToGummyGum, reportGummyGumCancel } from '../../lib/gummygumSession'
+import { IconClock, IconArrowLeft } from '../common/Icons'
 
 export default function SessionExpiredModal({ isHost }) {
   const handleHostRehost = async () => {
@@ -22,8 +23,8 @@ export default function SessionExpiredModal({ isHost }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fadeIn">
       <div className="bg-white border-2 border-brand-border rounded-[24px] p-6 sm:p-8 max-w-sm w-full text-center shadow-2xl animate-fadeUp flex flex-col items-center">
-        <div className="w-14 h-14 rounded-2xl bg-rose-50 border border-rose-200 text-rose-500 flex items-center justify-center text-2xl mb-3 shadow-xs">
-          ⏱️
+        <div className="w-14 h-14 rounded-2xl bg-rose-50 border border-rose-200 text-rose-500 flex items-center justify-center mb-3 shadow-xs">
+          <IconClock className="w-7 h-7" />
         </div>
         <h3 className="text-xl font-black text-brand-black mb-1.5">
           Session Expired
@@ -38,9 +39,10 @@ export default function SessionExpiredModal({ isHost }) {
           <button
             type="button"
             onClick={handleHostRehost}
-            className="w-full py-3 rounded-xl font-bold bg-brand-orange hover:bg-brand-orange-hover text-brand-black shadow-[0_3px_0_theme(colors.brand.orange-hover)] active:translate-y-0.5 transition-all cursor-pointer text-sm"
+            className="w-full py-3 rounded-xl font-bold bg-brand-orange hover:bg-brand-orange-hover text-brand-black shadow-[0_3px_0_theme(colors.brand.orange-hover)] active:translate-y-0.5 transition-all cursor-pointer text-sm inline-flex items-center justify-center gap-1.5"
           >
-            ← Return to GummyGum to Rehost
+            <IconArrowLeft className="w-4 h-4" />
+            Return to GummyGum to Rehost
           </button>
         ) : (
           <button
