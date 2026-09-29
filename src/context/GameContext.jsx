@@ -21,6 +21,7 @@ import {
   getGummyGumSession,
   reportGummyGumResult,
   reportGummyGumCancel,
+  watchHubSessionStatus,
 } from '../lib/gummygumSession'
 import { isAvatarId, randomAvatarId } from '../lib/avatars'
 
@@ -408,6 +409,33 @@ export function GameProvider({ children }) {
       if (unsubscribe) unsubscribe()
     }
   }, [sessionId, currentScreen, ggSession, invitedCount])
+
+  // The host may end the session from the hub, which never touches this room.
+  const hubPin = ggSession?.roomCode || sessionId
+  useEffect(() => {
+    if (!ggSession || !hubPin || !ggSession.hostedSessionId) return
+    return watchHubSessionStatus({
+      pin: hubPin,
+      hostedSessionId: ggSession.hostedSessionId,
+      onEnded: (hubSession) => {
+        if (sessionEndedRef.current || hostExitInProgressRef.current) return
+        sessionEndedRef.current = true
+        const completed = sessionStatusRef.current === 'finished'
+        if (ggSession.isHost) {
+          hostExitInProgressRef.current = true
+          const hubUrl = ggSession.hubUrl
+          // A newer re-run owns the PIN's room now, so only mark it ended if it is still ours.
+          const ownRoom = String(hubSession.id) === String(ggSession.hostedSessionId)
+          const markEnded = ownRoom ? endSession(hubPin, { completed }).catch(() => {}) : Promise.resolve()
+          markEnded.finally(() => returnToGummyGum(hubUrl))
+        } else {
+          setAwaitingHost(false)
+          setEndedCompleted(completed)
+          setIsCancelled(true)
+        }
+      },
+    })
+  }, [ggSession, hubPin])
 
   // Real-time interval check every 10s for 20-minute lobby expiration (idle in lobby only!)
   useEffect(() => {

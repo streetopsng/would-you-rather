@@ -114,9 +114,14 @@ export default function PlayerLobby() {
           </details>
 
           {/* Waiting status */}
-          <div className="flex items-center gap-2.5 px-3 py-2 text-xs text-brand-mid font-medium">
-            <span className="w-2 h-2 rounded-full bg-brand-orange animate-blink shrink-0" />
-            <span>Waiting for the host to start the round...</span>
+          <div className="flex items-start gap-2.5 px-3 py-2">
+            <span className="w-2 h-2 mt-1.5 rounded-full bg-brand-orange animate-blink shrink-0" />
+            <div>
+              <div className="text-sm font-black text-brand-black">You're in</div>
+              <div className="text-xs text-brand-mid font-medium leading-snug">
+                Answer at your own pace now, or wait here and the host will start everyone together.
+              </div>
+            </div>
           </div>
         </div>
 
