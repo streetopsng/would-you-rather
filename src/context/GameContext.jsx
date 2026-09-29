@@ -271,7 +271,7 @@ export function GameProvider({ children }) {
           // Participant Flow
           const storedAv = queryEmail ? localStorage.getItem(`wyr_avatar_${queryEmail}`) : null
           const savedAv = isAvatarId(storedAv) ? storedAv : null
-          const savedN = (queryEmail ? localStorage.getItem(`wyr_name_${queryEmail}`) : null) || queryName
+          const savedN = queryName || (queryEmail ? localStorage.getItem(`wyr_name_${queryEmail}`) : null)
           const roomKey = roomStorageKey(code, hostedSessionId)
           const alreadyJoined = queryEmail ? localStorage.getItem(`wyr_joined_${roomKey}_${queryEmail}`) === 'true' : false
 
