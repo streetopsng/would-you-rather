@@ -274,16 +274,27 @@ export function GameProvider({ children }) {
           const savedN = queryName || (queryEmail ? localStorage.getItem(`wyr_name_${queryEmail}`) : null)
           const roomKey = roomStorageKey(code, hostedSessionId)
           const alreadyJoined = queryEmail ? localStorage.getItem(`wyr_joined_${roomKey}_${queryEmail}`) === 'true' : false
+          // The invite email is the identity, so a rejoin from another device/browser finds its record in the room.
+          const pId = queryEmail ? stablePlayerId(queryEmail) : ''
+          const existingMe = pId && existing && !fromEarlierRoom
+            ? (existing.players || []).find((p) => p.id === pId || (p.email || '').toLowerCase().trim() === queryEmail)
+            : null
 
-          if (alreadyJoined && savedAv) {
-            const pId = stablePlayerId(queryEmail)
-            const restoredPlayer = { id: pId, name: savedN || 'Teammate', av: savedAv, email: queryEmail }
+          if ((alreadyJoined && savedAv) || existingMe) {
+            const restoredAv = isAvatarId(existingMe?.av) ? existingMe.av : savedAv
+            const restoredPlayer = { id: pId, name: queryName || existingMe?.name || savedN || 'Teammate', av: restoredAv, email: queryEmail }
             setPlayer(restoredPlayer)
             setPlayerEmail(queryEmail)
+            if (restoredAv) localStorage.setItem(`wyr_avatar_${queryEmail}`, restoredAv)
+            localStorage.setItem(`wyr_joined_${roomKey}_${queryEmail}`, 'true')
             const savedProgress = queryEmail
               ? parseInt(localStorage.getItem(`wyr_progress_${roomKey}_${queryEmail}`) || '0', 10)
               : 0
-            setPlayerQIdx(Number.isFinite(savedProgress) ? savedProgress : 0)
+            const votedRounds = Object.keys(existing?.votes || {})
+              .filter((r) => existing.votes[r] && existing.votes[r][pId] !== undefined)
+              .map(Number)
+            const votedProgress = votedRounds.length ? Math.max(...votedRounds) + 1 : 0
+            setPlayerQIdx(Math.max(Number.isFinite(savedProgress) ? savedProgress : 0, votedProgress))
             await joinSession(code, restoredPlayer).catch(() => {})
             setCurrentScreen('player-lobby')
           } else {

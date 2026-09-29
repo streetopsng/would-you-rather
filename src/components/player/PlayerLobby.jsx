@@ -83,7 +83,7 @@ export default function PlayerLobby() {
                         {p.name}
                       </div>
                       <div className="text-[11px] text-brand-muted truncate">
-                        {p.email || 'Teammate'}
+                        Teammate
                       </div>
                     </div>
                     <div className="w-2.5 h-2.5 rounded-full bg-brand-green shrink-0 shadow-xs" />
