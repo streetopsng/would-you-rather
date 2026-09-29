@@ -3,7 +3,7 @@ import { useGame } from '../../context/useGame'
 import Navbar from '../common/Navbar'
 import Avatar from '../common/Avatar'
 import { AVATAR_IDS, isAvatarId } from '../../lib/avatars'
-import { IconArrowRight, IconCheck } from '../common/Icons'
+import { IconArrowRight, IconCheck, IconLock } from '../common/Icons'
 
 export default function PlayerIdentity() {
   const { sessionName, player, savePlayerIdentity } = useGame()
@@ -40,7 +40,19 @@ export default function PlayerIdentity() {
           </p>
         </div>
 
-        {!player?.name && (
+        {player?.name ? (
+          <div className="bg-white border border-brand-border rounded-2xl p-5 shadow-xs">
+            <p className="block text-xs font-black uppercase tracking-wider text-brand-mid mb-2">Your name</p>
+            <div
+              aria-readonly="true"
+              className="w-full flex items-center gap-2.5 bg-brand-cream/30 border border-brand-border/70 rounded-xl px-4 py-3 text-sm font-bold text-brand-black/80"
+            >
+              <IconLock className="w-4 h-4 text-brand-muted shrink-0" />
+              <span className="truncate">{player.name}</span>
+            </div>
+            <p className="text-xs text-brand-muted mt-2">Set by your GummyGum invite</p>
+          </div>
+        ) : (
           <div className="bg-white border border-brand-border rounded-2xl p-5 shadow-xs">
             <label
               htmlFor="playerName"

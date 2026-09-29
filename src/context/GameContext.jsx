@@ -21,6 +21,7 @@ import {
   getGummyGumSession,
   reportGummyGumResult,
   reportGummyGumCancel,
+  watchHubSessionStatus,
 } from '../lib/gummygumSession'
 import { isAvatarId, randomAvatarId } from '../lib/avatars'
 
@@ -270,19 +271,30 @@ export function GameProvider({ children }) {
           // Participant Flow
           const storedAv = queryEmail ? localStorage.getItem(`wyr_avatar_${queryEmail}`) : null
           const savedAv = isAvatarId(storedAv) ? storedAv : null
-          const savedN = (queryEmail ? localStorage.getItem(`wyr_name_${queryEmail}`) : null) || queryName
+          const savedN = queryName || (queryEmail ? localStorage.getItem(`wyr_name_${queryEmail}`) : null)
           const roomKey = roomStorageKey(code, hostedSessionId)
           const alreadyJoined = queryEmail ? localStorage.getItem(`wyr_joined_${roomKey}_${queryEmail}`) === 'true' : false
+          // The invite email is the identity, so a rejoin from another device/browser finds its record in the room.
+          const pId = queryEmail ? stablePlayerId(queryEmail) : ''
+          const existingMe = pId && existing && !fromEarlierRoom
+            ? (existing.players || []).find((p) => p.id === pId || (p.email || '').toLowerCase().trim() === queryEmail)
+            : null
 
-          if (alreadyJoined && savedAv) {
-            const pId = stablePlayerId(queryEmail)
-            const restoredPlayer = { id: pId, name: savedN || 'Teammate', av: savedAv, email: queryEmail }
+          if ((alreadyJoined && savedAv) || existingMe) {
+            const restoredAv = isAvatarId(existingMe?.av) ? existingMe.av : savedAv
+            const restoredPlayer = { id: pId, name: queryName || existingMe?.name || savedN || 'Teammate', av: restoredAv, email: queryEmail }
             setPlayer(restoredPlayer)
             setPlayerEmail(queryEmail)
+            if (restoredAv) localStorage.setItem(`wyr_avatar_${queryEmail}`, restoredAv)
+            localStorage.setItem(`wyr_joined_${roomKey}_${queryEmail}`, 'true')
             const savedProgress = queryEmail
               ? parseInt(localStorage.getItem(`wyr_progress_${roomKey}_${queryEmail}`) || '0', 10)
               : 0
-            setPlayerQIdx(Number.isFinite(savedProgress) ? savedProgress : 0)
+            const votedRounds = Object.keys(existing?.votes || {})
+              .filter((r) => existing.votes[r] && existing.votes[r][pId] !== undefined)
+              .map(Number)
+            const votedProgress = votedRounds.length ? Math.max(...votedRounds) + 1 : 0
+            setPlayerQIdx(Math.max(Number.isFinite(savedProgress) ? savedProgress : 0, votedProgress))
             await joinSession(code, restoredPlayer).catch(() => {})
             setCurrentScreen('player-lobby')
           } else {
@@ -408,6 +420,33 @@ export function GameProvider({ children }) {
       if (unsubscribe) unsubscribe()
     }
   }, [sessionId, currentScreen, ggSession, invitedCount])
+
+  // The host may end the session from the hub, which never touches this room.
+  const hubPin = ggSession?.roomCode || sessionId
+  useEffect(() => {
+    if (!ggSession || !hubPin || !ggSession.hostedSessionId) return
+    return watchHubSessionStatus({
+      pin: hubPin,
+      hostedSessionId: ggSession.hostedSessionId,
+      onEnded: (hubSession) => {
+        if (sessionEndedRef.current || hostExitInProgressRef.current) return
+        sessionEndedRef.current = true
+        const completed = sessionStatusRef.current === 'finished'
+        if (ggSession.isHost) {
+          hostExitInProgressRef.current = true
+          const hubUrl = ggSession.hubUrl
+          // A newer re-run owns the PIN's room now, so only mark it ended if it is still ours.
+          const ownRoom = String(hubSession.id) === String(ggSession.hostedSessionId)
+          const markEnded = ownRoom ? endSession(hubPin, { completed }).catch(() => {}) : Promise.resolve()
+          markEnded.finally(() => returnToGummyGum(hubUrl))
+        } else {
+          setAwaitingHost(false)
+          setEndedCompleted(completed)
+          setIsCancelled(true)
+        }
+      },
+    })
+  }, [ggSession, hubPin])
 
   // Real-time interval check every 10s for 20-minute lobby expiration (idle in lobby only!)
   useEffect(() => {
