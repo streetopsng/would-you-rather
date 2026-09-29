@@ -1,9 +1,9 @@
 import React from 'react'
 import { useGame } from '../../context/useGame'
-import { returnToGummyGum } from '../../lib/gummygumSession'
+import { IconLogOut } from './Icons'
 
 export default function Navbar({ contextText }) {
-  const { sessionName, ggSession } = useGame()
+  const { sessionName, ggSession, setIsEndSessionModalOpen } = useGame()
   const isHost = Boolean(ggSession?.isHost)
 
   return (
@@ -24,11 +24,11 @@ export default function Navbar({ contextText }) {
         {isHost && (
           <button
             type="button"
-            onClick={() => returnToGummyGum()}
-            className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-white border border-brand-border text-xs font-bold text-brand-black hover:bg-slate-50 transition-colors shadow-xs cursor-pointer"
-            title="Back to GummyGum"
+            onClick={() => setIsEndSessionModalOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-rose-200 text-xs font-bold text-rose-600 hover:bg-rose-50 transition-colors shadow-xs cursor-pointer"
           >
-            <span>← Back to GummyGum</span>
+            <IconLogOut className="w-3.5 h-3.5" />
+            <span>End session</span>
           </button>
         )}
       </div>

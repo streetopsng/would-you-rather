@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import * as questionBankModule from '../data/questionBank'
-import { QUESTION_BANK, CATEGORIES, AVATAR_OPTIONS } from '../data/questionBank'
+import { QUESTION_BANK, CATEGORIES } from '../data/questionBank'
+import { AVATAR_IDS, avatarUrl } from '../lib/avatars'
 
 describe('questionBank data integrity', () => {
   it('contains exactly 5 required categories', () => {
@@ -21,8 +22,10 @@ describe('questionBank data integrity', () => {
     })
   })
 
-  it('contains 16 avatar options', () => {
-    expect(AVATAR_OPTIONS.length).toBe(16)
+  it('uses the 26 GummyGum hub avatars', () => {
+    expect(AVATAR_IDS.length).toBe(26)
+    expect(avatarUrl('av-3')).toBe('https://gummygum.app/avatars/av-3.svg')
+    expect(avatarUrl('legacy')).toBe('https://gummygum.app/avatars/av-1.svg')
   })
 
   it('contains no hardcoded mock participants', () => {

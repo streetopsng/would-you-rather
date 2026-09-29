@@ -10,11 +10,19 @@ import {
   updateSession,
   joinSession,
   recordVote,
+  endSession,
   isFirebaseConfigured,
 } from '../services/firebase'
 import { sendBulkGameInvites, isBrevoConfigured } from '../services/brevo'
 import { GameContext } from './GameContextBase'
-import { resolveGummyGumLaunch, returnToGummyGum, closeGummyGumSession } from '../lib/gummygumSession'
+import {
+  resolveGummyGumLaunch,
+  returnToGummyGum,
+  getGummyGumSession,
+  reportGummyGumResult,
+  reportGummyGumCancel,
+} from '../lib/gummygumSession'
+import { isAvatarId, randomAvatarId } from '../lib/avatars'
 
 
 // Hours, not the lobby's 20 min: a mid-game session with no connected client
@@ -61,6 +69,13 @@ export function GameProvider({ children }) {
   const [ggSession, setGgSession] = useState(null)
   const [ggChecked, setGgChecked] = useState(false)
   const [isCancelled, setIsCancelled] = useState(false)
+  const [endedCompleted, setEndedCompleted] = useState(false)
+  const [isEndSessionModalOpen, setIsEndSessionModalOpen] = useState(false)
+  const [isEndingSession, setIsEndingSession] = useState(false)
+  // Firestore fires listeners on our own endSession write before it resolves; keeps the host from redirecting before the hub report.
+  const hostExitInProgressRef = useRef(false)
+  const sessionEndedRef = useRef(false)
+  const sessionSeenRef = useRef(false)
   const [isSessionExpired, setIsSessionExpired] = useState(false)
   const [sessionCreatedAt, setSessionCreatedAt] = useState(null)
   const [sessionStatus, setSessionStatus] = useState('lobby')
@@ -74,12 +89,11 @@ export function GameProvider({ children }) {
 
   // Player State
   const [playerEmail, setPlayerEmail] = useState('')
-  const [player, setPlayer] = useState({ id: '', name: '', av: '🙂', email: '' })
+  const [player, setPlayer] = useState({ id: '', name: '', av: '', email: '' })
   const [playerQIdx, setPlayerQIdx] = useState(0)
   const [playerChoice, setPlayerChoice] = useState(null)
 
   // Modals
-  const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false)
   const [isCustomQModalOpen, setIsCustomQModalOpen] = useState(false)
 
   // Toast Notification helper
@@ -166,7 +180,7 @@ export function GameProvider({ children }) {
         }
 
         setInterval(() => {
-          if (IN_GAME_STATUSES.includes(sessionStatusRef.current)) {
+          if (!sessionEndedRef.current && IN_GAME_STATUSES.includes(sessionStatusRef.current)) {
             updateSession(code, { lastActivity: Date.now() }).catch(() => {})
           }
         }, HEARTBEAT_INTERVAL_MS)
@@ -201,9 +215,14 @@ export function GameProvider({ children }) {
             }).catch(() => {})
             setCurrentScreen('host-lobby')
           }
+        } else if (existing && (existing.status === 'ended' || existing.status === 'cancelled')) {
+          sessionEndedRef.current = true
+          setEndedCompleted(Boolean(existing.completed))
+          setIsCancelled(true)
         } else {
           // Participant Flow
-          const savedAv = queryEmail ? localStorage.getItem(`wyr_avatar_${queryEmail}`) : null
+          const storedAv = queryEmail ? localStorage.getItem(`wyr_avatar_${queryEmail}`) : null
+          const savedAv = isAvatarId(storedAv) ? storedAv : null
           const savedN = (queryEmail ? localStorage.getItem(`wyr_name_${queryEmail}`) : null) || queryName
           const alreadyJoined = queryEmail ? localStorage.getItem(`wyr_joined_${code}_${queryEmail}`) === 'true' : false
 
@@ -220,7 +239,7 @@ export function GameProvider({ children }) {
             setCurrentScreen('player-lobby')
           } else {
             if (queryEmail) setPlayerEmail(queryEmail)
-            setPlayer({ id: '', name: queryName, email: queryEmail, av: savedAv || '🦊' })
+            setPlayer({ id: '', name: queryName, email: queryEmail, av: savedAv || '' })
             setCurrentScreen('player-identity')
           }
         }
@@ -239,7 +258,7 @@ export function GameProvider({ children }) {
       name: name.trim(),
       email: email.trim().toLowerCase(),
       dept: dept.trim() || 'Team',
-      av: '🙂',
+      av: randomAvatarId(),
       selected: true,
       joined: false,
     }
@@ -282,18 +301,22 @@ export function GameProvider({ children }) {
   useEffect(() => {
     if (!sessionId) return
     const unsubscribe = subscribeToSession(sessionId, (data) => {
-      // A missing snapshot only ever means the createSession write hasn't
-      // landed yet (there's a real race right after launch where this
-      // listener attaches before the doc exists) or a transient read glitch —
-      // this app always signals real cancellation via an explicit status
-      // field, never by deleting the doc, so treat "no data yet" as still
-      // loading rather than a genuine host-cancellation event.
-      if (!data) return
+      // No snapshot before we've seen the doc is the create-race; after that it means the room was deleted.
+      if (!data) {
+        if (sessionSeenRef.current && !ggSession?.isHost && ggSession) {
+          sessionEndedRef.current = true
+          setIsCancelled(true)
+        }
+        return
+      }
+      sessionSeenRef.current = true
 
       if (data.status === 'cancelled' || data.status === 'ended') {
+        sessionEndedRef.current = true
         if (ggSession?.isHost) {
-          returnToGummyGum()
+          if (!hostExitInProgressRef.current) returnToGummyGum()
         } else if (ggSession) {
+          setEndedCompleted(Boolean(data.completed))
           setIsCancelled(true)
         }
         return
@@ -419,6 +442,7 @@ export function GameProvider({ children }) {
       if (sessionId) {
         await updateSession(sessionId, { status: 'finished' })
       }
+      setSessionStatus('finished')
       setCurrentScreen('host-finish')
     } else {
       setHostQIdx(nextIdx)
@@ -429,13 +453,42 @@ export function GameProvider({ children }) {
     }
   }
 
+  const buildReport = () => {
+    const leaderboard = joinedPlayers.map((p) => ({
+      name: p.name || 'Player',
+      score: Object.values(sessionVotes || {}).filter((round) => round && p.id in round).length,
+      streak: 0,
+      isHost: false,
+    }))
+    return {
+      experience: 'would-you-rather',
+      sessionName,
+      rounds: sessionQuestions.length,
+      leaderboard,
+    }
+  }
+
+  const hostEndSession = async () => {
+    if (hostExitInProgressRef.current) return
+    hostExitInProgressRef.current = true
+    setIsEndingSession(true)
+    const hubUrl = getGummyGumSession()?.hubUrl
+    const completed = sessionStatus === 'finished'
+    if (sessionId) {
+      await endSession(sessionId, { completed }).catch(() => {})
+    }
+    const reported = completed ? await reportGummyGumResult(buildReport()) : false
+    if (!reported) await reportGummyGumCancel()
+    returnToGummyGum(hubUrl)
+  }
+
   // Player Flow
   const initPlayerFlow = () => {
     if (!sessionQuestions.length) {
       setSessionQuestions(buildQuestions(roundCount))
     }
     setPlayerEmail('')
-    setPlayer({ id: '', name: '', av: '🙂', email: '' })
+    setPlayer({ id: '', name: '', av: '', email: '' })
     setCurrentScreen('player-home')
   }
 
@@ -445,6 +498,7 @@ export function GameProvider({ children }) {
   }
 
   const savePlayerIdentity = async (name, av) => {
+    if (sessionEndedRef.current) return
     const pId = stablePlayerId(playerEmail)
     const newPlayer = { id: pId, name: name.trim(), av, email: playerEmail }
     setPlayer(newPlayer)
@@ -462,12 +516,15 @@ export function GameProvider({ children }) {
       localStorage.setItem(`wyr_joined_${cleanId}_${normEmail}`, 'true')
     }
 
-    // Register player in Firestore
-    await joinSession(cleanId, newPlayer)
+    try {
+      await joinSession(cleanId, newPlayer)
+    } catch (e) {
+      console.warn('[WYR] join failed, entering lobby anyway:', e)
+    }
 
     setTimeout(() => {
       setCurrentScreen('player-lobby')
-    }, 1200)
+    }, 600)
   }
 
   const startPlayerGame = () => {
@@ -482,7 +539,7 @@ export function GameProvider({ children }) {
   }
 
   const answerPlayerQuestion = async (choice) => {
-    if (playerChoice) return
+    if (playerChoice || sessionEndedRef.current) return
     setPlayerChoice(choice)
 
     // Record real vote in Firestore
@@ -550,8 +607,10 @@ export function GameProvider({ children }) {
         answerPlayerQuestion,
         nextPlayerQuestion,
         // Modals
-        isAvatarModalOpen,
-        setIsAvatarModalOpen,
+        isEndSessionModalOpen,
+        setIsEndSessionModalOpen,
+        isEndingSession,
+        hostEndSession,
         isCustomQModalOpen,
         setIsCustomQModalOpen,
         // Config statuses
@@ -561,6 +620,7 @@ export function GameProvider({ children }) {
         ggSession,
         ggChecked,
         isCancelled,
+        endedCompleted,
         isSessionExpired,
         sessionExpiredContext,
         invitedCount,

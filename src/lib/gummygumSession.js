@@ -79,72 +79,46 @@ export async function resolveGummyGumLaunch() {
 
 export async function reportGummyGumCancel() {
   const session = getGummyGumSession();
-  if (!session || !session.reportToken) return;
+  if (!session || !session.reportToken) return false;
 
   try {
-    await fetch(`${API_URL}/api/gummygum/launch/cancel`, {
+    const res = await fetch(`${API_URL}/api/gummygum/launch/cancel`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ reportToken: session.reportToken }),
+      keepalive: true,
     });
+    return res.ok;
   } catch (err) {
     console.error('GummyGum cancel report failed', err);
-  } finally {
-    sessionStorage.removeItem(STORAGE_KEY);
-    localStorage.removeItem(STORAGE_KEY);
+    return false;
   }
 }
 
 export async function reportGummyGumResult(report) {
   const session = getGummyGumSession();
-  if (!session || !session.reportToken) return;
+  if (!session || !session.reportToken) return false;
 
   try {
-    await fetch(`${API_URL}/api/gummygum/launch/report`, {
+    const res = await fetch(`${API_URL}/api/gummygum/launch/report`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ reportToken: session.reportToken, report }),
+      keepalive: true,
     });
+    if (!res.ok) return false;
     session.reported = true;
     sessionStorage.setItem(STORAGE_KEY, JSON.stringify(session));
     localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
+    return true;
   } catch (err) {
     console.error('GummyGum result report failed', err);
+    return false;
   }
 }
 
-export async function closeGummyGumSession(finalReport) {
-  const session = getGummyGumSession();
-  if (!session) {
-    window.location.href = 'https://gummygum.app';
-    return;
-  }
-
-  if (!session.isHost) {
-    console.warn('Only the session host can close the session.');
-    returnToGummyGum();
-    return;
-  }
-
-  try {
-    await fetch(`${API_URL}/api/gummygum/launch/close`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ reportToken: session.reportToken, report: finalReport }),
-    });
-  } catch (err) {
-    console.error('GummyGum close session failed', err);
-  } finally {
-    const hub = session.hubUrl || 'https://gummygum.app';
-    sessionStorage.removeItem(STORAGE_KEY);
-    localStorage.removeItem(STORAGE_KEY);
-    window.location.href = hub;
-  }
-}
-
-export function returnToGummyGum() {
-  const session = getGummyGumSession();
-  const hub = session?.hubUrl || 'https://gummygum.app';
+export function returnToGummyGum(hubUrl) {
+  const hub = hubUrl || getGummyGumSession()?.hubUrl || 'https://gummygum.app';
   sessionStorage.removeItem(STORAGE_KEY);
   localStorage.removeItem(STORAGE_KEY);
   window.location.href = hub;
