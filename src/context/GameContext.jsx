@@ -30,6 +30,38 @@ import { isAvatarId, randomAvatarId } from '../lib/avatars'
 const ABANDON_THRESHOLD_MS = 3 * 60 * 60 * 1000
 const HEARTBEAT_INTERVAL_MS = 60 * 1000
 const IN_GAME_STATUSES = ['in-progress', 'revealed']
+const LOBBY_EXPIRY_MS = 20 * 60 * 1000
+
+const isClosedRoom = (room, now = Date.now()) => {
+  if (['ended', 'cancelled', 'expired', 'finished'].includes(room.status)) return true
+  if (room.status === 'lobby') return Boolean(room.createdAt) && now - room.createdAt >= LOBBY_EXPIRY_MS
+  const lastActivity = room.lastActivity || Date.parse(room.updatedAt) || room.createdAt
+  return IN_GAME_STATUSES.includes(room.status) && Boolean(lastActivity) && now - lastActivity >= ABANDON_THRESHOLD_MS
+}
+
+// The hub reuses a PIN for re-runs, so the room under it may belong to an earlier hosted session.
+const isFromEarlierRoom = (room, hostedSessionId) => {
+  if (!room || !hostedSessionId) return false
+  if (room.hostedSessionId) return room.hostedSessionId !== hostedSessionId
+  return isClosedRoom(room)
+}
+
+// Per-room localStorage flags are also per hosted session, since the PIN is reused.
+const roomStorageKey = (code, hostedSessionId) => [code, hostedSessionId].filter(Boolean).join('_')
+
+function waitForHostedRoom(code, hostedSessionId) {
+  return new Promise((resolve) => {
+    let done = false
+    let unsubscribe = null
+    unsubscribe = subscribeToSession(code, (data) => {
+      if (done || !data || isFromEarlierRoom(data, hostedSessionId)) return
+      done = true
+      if (unsubscribe) unsubscribe()
+      resolve(data)
+    })
+    if (done && unsubscribe) unsubscribe()
+  })
+}
 
 function shuffle(array) {
   const arr = [...array]
@@ -69,6 +101,7 @@ export function GameProvider({ children }) {
   const [ggSession, setGgSession] = useState(null)
   const [ggChecked, setGgChecked] = useState(false)
   const [isCancelled, setIsCancelled] = useState(false)
+  const [awaitingHost, setAwaitingHost] = useState(false)
   const [endedCompleted, setEndedCompleted] = useState(false)
   const [isEndSessionModalOpen, setIsEndSessionModalOpen] = useState(false)
   const [isEndingSession, setIsEndingSession] = useState(false)
@@ -162,13 +195,21 @@ export function GameProvider({ children }) {
       if (code) {
         routedRef.current = true
         setIsSessionExpired(false)
-        setSessionId(code)
 
-        const existing = await getSession(code).catch(() => null)
+        let existing = await getSession(code).catch(() => null)
+        const hostedSessionId = launchSession?.hostedSessionId || null
+        let fromEarlierRoom = isFromEarlierRoom(existing, hostedSessionId)
+        if (!isHost && hostedSessionId && (!existing || fromEarlierRoom)) {
+          setAwaitingHost(true)
+          existing = await waitForHostedRoom(code, hostedSessionId)
+          fromEarlierRoom = false
+          setAwaitingHost(false)
+        }
+        setSessionId(code)
 
         // Checked before this client's heartbeat starts so a returning
         // client can't mask a genuinely abandoned session.
-        if (existing && IN_GAME_STATUSES.includes(existing.status)) {
+        if (existing && !fromEarlierRoom && IN_GAME_STATUSES.includes(existing.status)) {
           const lastActivity = existing.lastActivity || Date.parse(existing.updatedAt) || existing.createdAt
           if (lastActivity && Date.now() - lastActivity >= ABANDON_THRESHOLD_MS) {
             await updateSession(code, { status: 'expired', abandoned: true }).catch(() => {})
@@ -189,7 +230,12 @@ export function GameProvider({ children }) {
           // Recover an existing session (e.g. the host hard-refreshed mid-game)
           // instead of blindly recreating it, which would wipe every joined
           // player, vote and round in progress back to an empty lobby.
-          if (existing && existing.status && existing.status !== 'cancelled' && existing.status !== 'ended') {
+          // A room this same hosted session ended is recovered too, so the listener sends a duplicate tab back to the hub.
+          const sameHostedSession = Boolean(hostedSessionId) && existing?.hostedSessionId === hostedSessionId
+          if (existing && existing.status && !fromEarlierRoom && (sameHostedSession || (existing.status !== 'cancelled' && existing.status !== 'ended'))) {
+            if (hostedSessionId && !existing.hostedSessionId) {
+              updateSession(code, { hostedSessionId }).catch(() => {})
+            }
             setSessionName(existing.name || `${launchSession?.player?.name || queryName || 'Host'}'s Would You Rather`)
             setSessionQuestions(existing.questions || [])
             setJoinedPlayers(existing.players || [])
@@ -210,6 +256,7 @@ export function GameProvider({ children }) {
               rounds: 15,
               questions: qList,
               invitedCount: invCount,
+              hostedSessionId,
               status: 'lobby',
               createdAt: Date.now(),
             }).catch(() => {})
@@ -224,7 +271,8 @@ export function GameProvider({ children }) {
           const storedAv = queryEmail ? localStorage.getItem(`wyr_avatar_${queryEmail}`) : null
           const savedAv = isAvatarId(storedAv) ? storedAv : null
           const savedN = (queryEmail ? localStorage.getItem(`wyr_name_${queryEmail}`) : null) || queryName
-          const alreadyJoined = queryEmail ? localStorage.getItem(`wyr_joined_${code}_${queryEmail}`) === 'true' : false
+          const roomKey = roomStorageKey(code, hostedSessionId)
+          const alreadyJoined = queryEmail ? localStorage.getItem(`wyr_joined_${roomKey}_${queryEmail}`) === 'true' : false
 
           if (alreadyJoined && savedAv) {
             const pId = stablePlayerId(queryEmail)
@@ -232,7 +280,7 @@ export function GameProvider({ children }) {
             setPlayer(restoredPlayer)
             setPlayerEmail(queryEmail)
             const savedProgress = queryEmail
-              ? parseInt(localStorage.getItem(`wyr_progress_${code}_${queryEmail}`) || '0', 10)
+              ? parseInt(localStorage.getItem(`wyr_progress_${roomKey}_${queryEmail}`) || '0', 10)
               : 0
             setPlayerQIdx(Number.isFinite(savedProgress) ? savedProgress : 0)
             await joinSession(code, restoredPlayer).catch(() => {})
@@ -310,6 +358,14 @@ export function GameProvider({ children }) {
         return
       }
       sessionSeenRef.current = true
+
+      const ownHostedSessionId = ggSession?.hostedSessionId
+      if (!ggSession?.isHost && ownHostedSessionId && data.hostedSessionId && data.hostedSessionId !== ownHostedSessionId) {
+        // The host re-created this PIN for a newer hosted session, so this participant's session is over.
+        sessionEndedRef.current = true
+        setIsCancelled(true)
+        return
+      }
 
       if (data.status === 'cancelled' || data.status === 'ended') {
         sessionEndedRef.current = true
@@ -513,7 +569,7 @@ export function GameProvider({ children }) {
       const normEmail = playerEmail.toLowerCase().trim()
       localStorage.setItem(`wyr_avatar_${normEmail}`, av)
       localStorage.setItem(`wyr_name_${normEmail}`, name.trim())
-      localStorage.setItem(`wyr_joined_${cleanId}_${normEmail}`, 'true')
+      localStorage.setItem(`wyr_joined_${roomStorageKey(cleanId, ggSession?.hostedSessionId)}_${normEmail}`, 'true')
     }
 
     try {
@@ -555,7 +611,7 @@ export function GameProvider({ children }) {
   const nextPlayerQuestion = () => {
     const nextIdx = playerQIdx + 1
     if (playerEmail && sessionId) {
-      localStorage.setItem(`wyr_progress_${sessionId}_${playerEmail.toLowerCase().trim()}`, String(nextIdx))
+      localStorage.setItem(`wyr_progress_${roomStorageKey(sessionId, ggSession?.hostedSessionId)}_${playerEmail.toLowerCase().trim()}`, String(nextIdx))
     }
     if (nextIdx >= sessionQuestions.length) {
       setCurrentScreen('player-finish')
@@ -619,6 +675,7 @@ export function GameProvider({ children }) {
         // GummyGum Integration
         ggSession,
         ggChecked,
+        awaitingHost,
         isCancelled,
         endedCompleted,
         isSessionExpired,

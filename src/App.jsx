@@ -28,7 +28,7 @@ import PlayerResults from './components/player/PlayerResults'
 import PlayerFinish from './components/player/PlayerFinish'
 
 function GameRouter() {
-  const { currentScreen, ggSession, ggChecked, isCancelled, endedCompleted, isSessionExpired, sessionExpiredContext } = useGame()
+  const { currentScreen, ggSession, ggChecked, awaitingHost, isCancelled, endedCompleted, isSessionExpired, sessionExpiredContext } = useGame()
 
   if (!ggChecked) {
     return <LoadingScreen message="Connecting to GummyGum..." />
@@ -40,6 +40,10 @@ function GameRouter() {
 
   if (!ggSession) {
     return <GummyGumLockedScreen />
+  }
+
+  if (awaitingHost) {
+    return <LoadingScreen message="Waiting for the host to start..." />
   }
 
   const renderScreen = () => {
