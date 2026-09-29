@@ -17,6 +17,12 @@ import { GameContext } from './GameContextBase'
 import { resolveGummyGumLaunch, returnToGummyGum, closeGummyGumSession } from '../lib/gummygumSession'
 
 
+// Hours, not the lobby's 20 min: a mid-game session with no connected client
+// this long is abandoned rather than just a long game.
+const ABANDON_THRESHOLD_MS = 3 * 60 * 60 * 1000
+const HEARTBEAT_INTERVAL_MS = 60 * 1000
+const IN_GAME_STATUSES = ['in-progress', 'revealed']
+
 function shuffle(array) {
   const arr = [...array]
   for (let i = arr.length - 1; i > 0; i--) {
@@ -58,6 +64,9 @@ export function GameProvider({ children }) {
   const [isSessionExpired, setIsSessionExpired] = useState(false)
   const [sessionCreatedAt, setSessionCreatedAt] = useState(null)
   const [sessionStatus, setSessionStatus] = useState('lobby')
+  const [sessionExpiredContext, setSessionExpiredContext] = useState('lobby')
+  const sessionStatusRef = useRef('lobby')
+  sessionStatusRef.current = sessionStatus
 
   // Host State
   const [hostQIdx, setHostQIdx] = useState(0)
@@ -141,11 +150,31 @@ export function GameProvider({ children }) {
         setIsSessionExpired(false)
         setSessionId(code)
 
+        const existing = await getSession(code).catch(() => null)
+
+        // Checked before this client's heartbeat starts so a returning
+        // client can't mask a genuinely abandoned session.
+        if (existing && IN_GAME_STATUSES.includes(existing.status)) {
+          const lastActivity = existing.lastActivity || Date.parse(existing.updatedAt) || existing.createdAt
+          if (lastActivity && Date.now() - lastActivity >= ABANDON_THRESHOLD_MS) {
+            await updateSession(code, { status: 'expired', abandoned: true }).catch(() => {})
+            existing.status = 'expired'
+            existing.abandoned = true
+            setSessionExpiredContext('game')
+            setIsSessionExpired(true)
+          }
+        }
+
+        setInterval(() => {
+          if (IN_GAME_STATUSES.includes(sessionStatusRef.current)) {
+            updateSession(code, { lastActivity: Date.now() }).catch(() => {})
+          }
+        }, HEARTBEAT_INTERVAL_MS)
+
         if (isHost) {
           // Recover an existing session (e.g. the host hard-refreshed mid-game)
           // instead of blindly recreating it, which would wipe every joined
           // player, vote and round in progress back to an empty lobby.
-          const existing = await getSession(code).catch(() => null)
           if (existing && existing.status && existing.status !== 'cancelled' && existing.status !== 'ended') {
             setSessionName(existing.name || `${launchSession?.player?.name || queryName || 'Host'}'s Would You Rather`)
             setSessionQuestions(existing.questions || [])
@@ -274,6 +303,7 @@ export function GameProvider({ children }) {
       if (data.createdAt) setSessionCreatedAt(data.createdAt)
 
       if (data.status === 'expired') {
+        setSessionExpiredContext(data.abandoned ? 'game' : 'lobby')
         setIsSessionExpired(true)
         return
       }
@@ -532,6 +562,7 @@ export function GameProvider({ children }) {
         ggChecked,
         isCancelled,
         isSessionExpired,
+        sessionExpiredContext,
         invitedCount,
       }}
     >

@@ -27,7 +27,7 @@ import PlayerResults from './components/player/PlayerResults'
 import PlayerFinish from './components/player/PlayerFinish'
 
 function GameRouter() {
-  const { currentScreen, ggSession, ggChecked, isCancelled, isSessionExpired } = useGame()
+  const { currentScreen, ggSession, ggChecked, isCancelled, isSessionExpired, sessionExpiredContext } = useGame()
 
   if (!ggChecked) {
     return <LoadingScreen message="Connecting to GummyGum..." />
@@ -87,7 +87,9 @@ function GameRouter() {
 
       <Toast />
       <CustomQuestionModal />
-      {isSessionExpired && <SessionExpiredModal isHost={Boolean(ggSession?.isHost)} />}
+      {isSessionExpired && (
+        <SessionExpiredModal isHost={Boolean(ggSession?.isHost)} context={sessionExpiredContext} />
+      )}
     </div>
   )
 }
