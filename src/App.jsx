@@ -7,6 +7,7 @@ import Toast from './components/common/Toast'
 import CustomQuestionModal from './components/modals/CustomQuestionModal'
 import LoadingScreen from './components/common/LoadingScreen'
 import SessionExpiredModal from './components/modals/SessionExpiredModal'
+import EndSessionModal from './components/modals/EndSessionModal'
 import { GummyGumLockedScreen, GummyGumCancelledScreen } from './components/common/GummyGumScreens'
 
 // Host Screens
@@ -27,18 +28,22 @@ import PlayerResults from './components/player/PlayerResults'
 import PlayerFinish from './components/player/PlayerFinish'
 
 function GameRouter() {
-  const { currentScreen, ggSession, ggChecked, isCancelled, isSessionExpired, sessionExpiredContext } = useGame()
+  const { currentScreen, ggSession, ggChecked, awaitingHost, isCancelled, endedCompleted, isSessionExpired, sessionExpiredContext } = useGame()
 
   if (!ggChecked) {
     return <LoadingScreen message="Connecting to GummyGum..." />
   }
 
   if (isCancelled || currentScreen === 'gg-cancelled') {
-    return <GummyGumCancelledScreen isHost={Boolean(ggSession?.isHost)} />
+    return <GummyGumCancelledScreen isHost={Boolean(ggSession?.isHost)} completed={endedCompleted} />
   }
 
   if (!ggSession) {
     return <GummyGumLockedScreen />
+  }
+
+  if (awaitingHost) {
+    return <LoadingScreen message="Waiting for the host to start..." />
   }
 
   const renderScreen = () => {
@@ -87,6 +92,7 @@ function GameRouter() {
 
       <Toast />
       <CustomQuestionModal />
+      {ggSession?.isHost && <EndSessionModal />}
       {isSessionExpired && (
         <SessionExpiredModal isHost={Boolean(ggSession?.isHost)} context={sessionExpiredContext} />
       )}

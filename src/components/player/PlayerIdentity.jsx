@@ -1,110 +1,117 @@
 import React, { useState } from 'react'
 import { useGame } from '../../context/useGame'
 import Navbar from '../common/Navbar'
-import AvatarModal from '../modals/AvatarModal'
-import GameRulesModal from '../modals/GameRulesModal'
-import { IconPalette, IconArrowRight } from '../common/Icons'
+import Avatar from '../common/Avatar'
+import { AVATAR_IDS, isAvatarId } from '../../lib/avatars'
+import { IconArrowRight, IconCheck } from '../common/Icons'
 
 export default function PlayerIdentity() {
-  const { sessionName, player, savePlayerIdentity, setIsAvatarModalOpen } = useGame()
+  const { sessionName, player, savePlayerIdentity } = useGame()
   const [name, setName] = useState(player?.name || '')
-  const [avatar, setAvatar] = useState(player?.av || '🦊')
-  const [showRulesModal, setShowRulesModal] = useState(false)
+  const [avatar, setAvatar] = useState(isAvatarId(player?.av) ? player.av : null)
+  const [submitting, setSubmitting] = useState(false)
 
-  const canContinue = name.trim().length >= 2
+  const hasName = name.trim().length >= 2
+  const canContinue = hasName && Boolean(avatar) && !submitting
 
   const handleContinue = () => {
     if (!canContinue) return
-    setShowRulesModal(true)
-  }
-
-  const handleConfirmRules = () => {
+    setSubmitting(true)
     savePlayerIdentity(name.trim(), avatar)
   }
 
+  const hint = !avatar
+    ? 'Pick an avatar to continue'
+    : !hasName
+    ? 'Enter your name to continue'
+    : 'Looking good! Tap to join the lobby.'
+
   return (
-    <div className="w-full flex-1 flex flex-col justify-between">
+    <div className="w-full flex-1 flex flex-col">
       <Navbar title="Your Identity" contextText={sessionName} />
 
-      <main className="flex-1 max-w-md w-full mx-auto p-4 sm:p-6 flex flex-col justify-between">
-        <div className="space-y-6">
-          {/* Avatar Card */}
-          <div className="bg-white border border-brand-border rounded-3xl p-6 shadow-xs text-center flex flex-col items-center">
-            <button
-              type="button"
-              onClick={() => setIsAvatarModalOpen(true)}
-              className="w-24 h-24 rounded-full bg-brand-orange-light border-3 border-brand-black flex items-center justify-center text-5xl hover:scale-105 active:scale-95 transition-transform shadow-xs cursor-pointer"
-            >
-              {avatar}
-            </button>
-
-            <div className="text-lg font-extrabold text-brand-black mt-3">
-              {name.trim() || '—'}
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setIsAvatarModalOpen(true)}
-              className="mt-3 px-4 py-2 rounded-xl bg-brand-cream hover:bg-stone-200 text-xs font-bold text-brand-black transition-colors flex items-center gap-1.5 cursor-pointer border border-brand-border/60"
-            >
-              <IconPalette className="w-3.5 h-3.5" /> Choose avatar
-            </button>
-          </div>
-
-          {/* Name Input — only shown if player name not already known from GummyGum */}
-          {!player?.name && (
-            <div className="bg-white border border-brand-border rounded-2xl p-5 shadow-xs">
-              <label
-                htmlFor="playerName"
-                className="block text-xs font-black uppercase tracking-wider text-brand-mid mb-2"
-              >
-                Your name
-              </label>
-              <input
-                id="playerName"
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Enter your name"
-                maxLength={20}
-                className="w-full bg-brand-cream/50 border border-brand-border rounded-xl px-4 py-3 text-sm font-bold text-brand-black outline-none focus:border-brand-orange focus:bg-white transition-colors"
-              />
-            </div>
-          )}
+      <main className="flex-1 max-w-md w-full mx-auto p-4 sm:p-6 pb-40 md:pb-6 space-y-5">
+        <div className="text-center">
+          <h2 className="text-xl sm:text-2xl font-black text-brand-black">
+            Choose your avatar
+          </h2>
+          <p className="text-xs text-brand-mid mt-1">
+            Then tap <span className="font-bold text-brand-black">Enter the lobby</span> below.
+          </p>
         </div>
 
-        {/* Enter Lobby Action */}
-        <div className="mt-8 pt-4 border-t border-brand-border/60 flex flex-col items-center gap-2">
-          <button
-            type="button"
-            onClick={handleContinue}
-            disabled={!canContinue}
-            className={`w-full py-3.5 px-6 rounded-xl font-extrabold text-base transition-all flex items-center justify-center gap-2 cursor-pointer ${
-              canContinue
-                ? 'bg-brand-orange hover:bg-brand-orange-hover text-brand-black border border-brand-orange-hover shadow-xs'
-                : 'bg-brand-border text-brand-muted cursor-not-allowed opacity-60'
-            }`}
-          >
-            <span>Enter the lobby</span>
-            <IconArrowRight className="w-4 h-4" />
-          </button>
-          <p className="text-xs text-brand-muted">
-            {canContinue ? 'Looking good!' : 'Enter your name to continue'}
-          </p>
+        {!player?.name && (
+          <div className="bg-white border border-brand-border rounded-2xl p-5 shadow-xs">
+            <label
+              htmlFor="playerName"
+              className="block text-xs font-black uppercase tracking-wider text-brand-mid mb-2"
+            >
+              Your name
+            </label>
+            <input
+              id="playerName"
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Enter your name"
+              maxLength={20}
+              className="w-full bg-brand-cream/50 border border-brand-border rounded-xl px-4 py-3 text-sm font-bold text-brand-black outline-none focus:border-brand-orange focus:bg-white transition-colors"
+            />
+          </div>
+        )}
+
+        <div className="bg-white border border-brand-border rounded-3xl p-4 sm:p-5 shadow-xs">
+          <div className="grid grid-cols-4 sm:grid-cols-5 gap-2.5">
+            {AVATAR_IDS.map((id) => {
+              const isSelected = avatar === id
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => setAvatar(id)}
+                  aria-pressed={isSelected}
+                  aria-label={`Avatar ${id.replace('av-', '')}`}
+                  className={`relative aspect-square rounded-full p-0.5 border-2 transition-all cursor-pointer ${
+                    isSelected
+                      ? 'border-brand-orange ring-2 ring-brand-orange/30 scale-105'
+                      : 'border-transparent hover:border-brand-border'
+                  }`}
+                >
+                  <Avatar id={id} className="w-full h-full" />
+                  {isSelected && (
+                    <span className="absolute -top-0.5 -right-0.5 w-5 h-5 rounded-full bg-brand-orange text-brand-black flex items-center justify-center border-2 border-white">
+                      <IconCheck className="w-3 h-3" />
+                    </span>
+                  )}
+                </button>
+              )
+            })}
+          </div>
         </div>
       </main>
 
-      <AvatarModal
-        currentAvatar={avatar}
-        onSelectAvatar={(newAv) => setAvatar(newAv)}
-      />
-
-      {showRulesModal && (
-        <GameRulesModal
-          name={name.trim()}
-          onConfirm={handleConfirmRules}
-        />
-      )}
+      {/* Fixed on mobile so the next step is always on screen, even mid-scroll through the grid */}
+      <div className="fixed md:sticky bottom-0 inset-x-0 z-30 bg-brand-cream/95 backdrop-blur-xs border-t border-brand-border/60 px-4 py-3">
+        <div className="max-w-md mx-auto flex flex-col items-center gap-1.5">
+          <div className="w-full flex items-center gap-3">
+            {avatar && <Avatar id={avatar} className="w-11 h-11 border-2 border-brand-orange" />}
+            <button
+              type="button"
+              onClick={handleContinue}
+              disabled={!canContinue}
+              className={`flex-1 py-3.5 px-6 rounded-xl font-extrabold text-base transition-all flex items-center justify-center gap-2 ${
+                canContinue
+                  ? 'bg-brand-orange hover:bg-brand-orange-hover text-brand-black border border-brand-orange-hover shadow-xs cursor-pointer'
+                  : 'bg-brand-border text-brand-muted cursor-not-allowed opacity-60'
+              }`}
+            >
+              <span>{submitting ? 'Joining...' : 'Enter the lobby'}</span>
+              <IconArrowRight className="w-4 h-4" />
+            </button>
+          </div>
+          <p className="text-xs text-brand-muted">{hint}</p>
+        </div>
+      </div>
     </div>
   )
 }

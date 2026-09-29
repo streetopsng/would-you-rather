@@ -1,7 +1,13 @@
 import React from 'react'
 import { useGame } from '../../context/useGame'
-import { returnToGummyGum } from '../../lib/gummygumSession'
+import Avatar from '../common/Avatar'
 import { IconCheck, IconChevronRight } from '../common/Icons'
+
+const HOW_IT_WORKS = [
+  ['Pick your side', "Each round shows two choices. Tap the one you'd rather do."],
+  ['See how the team voted', 'Results reveal live, so you can see who sided with you.'],
+  ['Debate and connect', "Don't overthink it. Go with your gut and be ready to defend it."],
+]
 
 export default function PlayerLobby() {
   const { sessionName, player, joinedPlayers, startPlayerGame } = useGame()
@@ -40,9 +46,7 @@ export default function PlayerLobby() {
         <div className="space-y-4">
           {/* You Card */}
           <div className="bg-white border border-brand-border rounded-2xl p-4 shadow-xs flex items-center gap-3.5">
-            <div className="w-12 h-12 rounded-full bg-brand-orange-light border-2 border-brand-orange flex items-center justify-center text-2xl shrink-0">
-              {player.av || '🙂'}
-            </div>
+            <Avatar id={player.av} className="w-12 h-12 border-2 border-brand-orange" />
             <div className="flex-1 min-w-0">
               <div className="text-base font-black text-brand-black truncate">
                 {player.name || 'You'}
@@ -73,9 +77,7 @@ export default function PlayerLobby() {
                     key={p.id || p.email}
                     className="py-2.5 px-3 flex items-center gap-3 animate-row-in"
                   >
-                    <div className="w-8 h-8 rounded-full bg-brand-orange-light border border-brand-orange/60 flex items-center justify-center text-base shrink-0">
-                      {p.av || '🙂'}
-                    </div>
+                    <Avatar id={p.av} className="w-8 h-8 border border-brand-orange/60" />
                     <div className="flex-1 min-w-0">
                       <div className="text-xs sm:text-sm font-bold text-brand-black truncate">
                         {p.name}
@@ -90,6 +92,26 @@ export default function PlayerLobby() {
               )}
             </div>
           </div>
+
+          <details open className="group bg-white border border-brand-border rounded-2xl shadow-xs">
+            <summary className="list-none cursor-pointer px-4 py-3 flex items-center justify-between text-[11px] font-black uppercase tracking-wider text-brand-mid">
+              <span>How it works</span>
+              <IconChevronRight className="w-4 h-4 transition-transform group-open:rotate-90" />
+            </summary>
+            <ol className="px-4 pb-4 space-y-2.5">
+              {HOW_IT_WORKS.map(([title, body], i) => (
+                <li key={title} className="flex items-start gap-3">
+                  <span className="w-6 h-6 rounded-lg bg-brand-orange-light text-brand-orange-hover font-black text-xs flex items-center justify-center shrink-0">
+                    {i + 1}
+                  </span>
+                  <div>
+                    <div className="text-[13px] font-black text-brand-black">{title}</div>
+                    <div className="text-[11.5px] text-brand-mid leading-snug">{body}</div>
+                  </div>
+                </li>
+              ))}
+            </ol>
+          </details>
 
           {/* Waiting status */}
           <div className="flex items-center gap-2.5 px-3 py-2 text-xs text-brand-mid font-medium">

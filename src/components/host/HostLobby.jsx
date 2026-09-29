@@ -2,14 +2,12 @@ import React from 'react'
 import { useGame } from '../../context/useGame'
 import Navbar from '../common/Navbar'
 import { getPercentageWidthClass } from '../../utils/styleUtils'
-import { closeGummyGumSession } from '../../lib/gummygumSession'
-import { endSession } from '../../services/firebase'
+import Avatar from '../common/Avatar'
 import { IconCheck, IconChevronRight } from '../common/Icons'
 
 export default function HostLobby() {
   const {
     sessionName,
-    sessionId,
     participants,
     joinedPlayers,
     startHostGame,
@@ -87,9 +85,7 @@ export default function HostLobby() {
                     key={p.id || p.email}
                     className="py-3 px-2 flex items-center gap-3 rounded-xl bg-emerald-50/40"
                   >
-                    <div className="w-9 h-9 rounded-full flex items-center justify-center text-lg shrink-0 border bg-brand-orange-light border-brand-orange">
-                      {p.av || '🙂'}
-                    </div>
+                    <Avatar id={p.av} className="w-9 h-9 border border-brand-orange" />
 
                     <div className="flex-1 min-w-0">
                       <div className="text-sm font-bold text-brand-black truncate">
@@ -124,17 +120,6 @@ export default function HostLobby() {
           >
             <span>Start game</span>
             <IconChevronRight className="w-4 h-4" />
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              if (confirm('End this session and return to GummyGum?')) {
-                endSession(sessionId).finally(() => closeGummyGumSession())
-              }
-            }}
-            className="w-full max-w-md py-2.5 px-4 rounded-full border border-brand-border hover:border-red-300 text-xs font-bold text-brand-muted hover:text-red-600 bg-white hover:bg-red-50/50 transition-all cursor-pointer shadow-xs mt-1"
-          >
-            Close Session & Return to GummyGum
           </button>
           <p className="text-center text-xs text-brand-muted max-w-sm leading-relaxed">
             {canStart

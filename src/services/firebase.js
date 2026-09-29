@@ -243,11 +243,11 @@ export async function recordVote(sessionId, roundIndex, playerId, choice) {
 }
 
 /**
- * End session and mark status as ended
+ * End session and mark status as ended so every subscribed participant is notified
  */
-export async function endSession(sessionId) {
+export async function endSession(sessionId, { completed = false } = {}) {
   await ensureFirebase()
-  const updates = { status: 'ended', updatedAt: new Date().toISOString() }
+  const updates = { status: 'ended', endedAt: Date.now(), completed, updatedAt: new Date().toISOString() }
   if (isFirebaseConfigured && db) {
     try {
       const sessionRef = doc(db, 'sessions', sessionId)
@@ -257,6 +257,5 @@ export async function endSession(sessionId) {
       console.warn('[Firebase] endSession error:', e)
     }
   }
-  broadcastLocalUpdate(sessionId, updates)
+  broadcastLocalUpdate(sessionId, { ...(localStore.get(sessionId) || {}), ...updates })
 }
-

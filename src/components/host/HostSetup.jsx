@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { useGame } from '../../context/useGame'
+import Avatar from '../common/Avatar'
 import Navbar from '../common/Navbar'
 import { IconCheck, IconClose, IconMail, IconUsers, IconChevronRight } from '../common/Icons'
 
@@ -202,9 +203,7 @@ export default function HostSetup() {
                         <IconCheck className="w-3 h-3" />
                       </button>
 
-                      <div className="w-7 h-7 rounded-full bg-brand-orange-light border border-brand-orange/60 flex items-center justify-center text-sm shrink-0">
-                        {p.av}
-                      </div>
+                      <Avatar id={p.av} className="w-7 h-7 border border-brand-orange/60" />
 
                       <div className="flex-1 min-w-0">
                         <div className="text-xs font-bold text-brand-black truncate">

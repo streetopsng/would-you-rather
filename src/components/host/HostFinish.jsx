@@ -1,11 +1,10 @@
 import React from 'react'
 import { useGame } from '../../context/useGame'
 import Navbar from '../common/Navbar'
-import { closeGummyGumSession } from '../../lib/gummygumSession'
-import { IconFlag, IconArrowRight } from '../common/Icons'
+import { IconFlag, IconLogOut } from '../common/Icons'
 
 export default function HostFinish() {
-  const { sessionName, sessionQuestions, setCurrentScreen } = useGame()
+  const { sessionName, sessionQuestions, setIsEndSessionModalOpen } = useGame()
 
   return (
     <div className="w-full flex-1 flex flex-col justify-between">
@@ -29,11 +28,11 @@ export default function HostFinish() {
           <div className="mt-8 pt-6 border-t border-brand-border/60">
             <button
               type="button"
-              onClick={() => closeGummyGumSession()}
+              onClick={() => setIsEndSessionModalOpen(true)}
               className="w-full py-4 px-6 rounded-full bg-brand-orange hover:bg-brand-orange-hover text-brand-black font-extrabold text-base border border-brand-orange-hover shadow-xs transition-all cursor-pointer flex items-center justify-center gap-2"
             >
-              <span>Done — Return to GummyGum</span>
-              <IconArrowRight className="w-4 h-4" />
+              <IconLogOut className="w-4 h-4" />
+              <span>End session</span>
             </button>
           </div>
         </div>
