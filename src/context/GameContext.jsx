@@ -141,13 +141,18 @@ export function GameProvider({ children }) {
   }, [])
 
   // Build question list across categories
-  const buildQuestions = useCallback((rounds) => {
+  const buildQuestions = useCallback((rounds, hubCategory) => {
+    const withCat = (cat) => [...QUESTION_BANK[cat], ...(customQuestions[cat] || [])].map((q) => ({ ...q, cat }))
+    if (hubCategory === 'office') {
+      // Work alone can't fill every round count, so top up from the other categories.
+      const work = shuffle(withCat('Work')).slice(0, rounds)
+      const rest = shuffle(CATEGORIES.filter((c) => c !== 'Work').flatMap(withCat)).slice(0, rounds - work.length)
+      return [...work, ...rest]
+    }
     const perCat = Math.max(1, Math.floor(rounds / CATEGORIES.length))
     let pool = []
     CATEGORIES.forEach((cat) => {
-      const combined = [...QUESTION_BANK[cat], ...(customQuestions[cat] || [])]
-      const sliced = shuffle(combined).slice(0, perCat).map((q) => ({ ...q, cat }))
-      pool = pool.concat(sliced)
+      pool = pool.concat(shuffle(withCat(cat)).slice(0, perCat))
     })
     return shuffle(pool)
   }, [customQuestions])
@@ -249,13 +254,16 @@ export function GameProvider({ children }) {
             if (existing.invitedCount) setInvitedCount(existing.invitedCount)
             setCurrentScreen(screenForSessionStatus(existing.status))
           } else {
+            const hubConfig = launchSession?.config || {}
             const hostName = launchSession?.player?.name || queryName || 'Host'
-            setSessionName(`${hostName}'s Would You Rather`)
-            const qList = buildQuestions(15)
+            const name = hubConfig.name || `${hostName}'s Would You Rather`
+            const rounds = Number(hubConfig.roundCount) > 0 ? Number(hubConfig.roundCount) : 15
+            setSessionName(name)
+            const qList = buildQuestions(rounds, hubConfig.category)
             setSessionQuestions(qList)
             await createSession(code, {
-              name: `${hostName}'s Would You Rather`,
-              rounds: 15,
+              name,
+              rounds,
               questions: qList,
               invitedCount: invCount,
               hostedSessionId,
