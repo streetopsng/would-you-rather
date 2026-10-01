@@ -1,11 +1,7 @@
 import React from 'react'
-import { useGame } from '../../context/useGame'
-import { returnToGummyGum } from '../../lib/gummygumSession'
 import { IconCheckCircle } from '../common/Icons'
 
 export default function PlayerFinish() {
-  const { setCurrentScreen } = useGame()
-
   return (
     <div className="w-full flex-1 flex flex-col justify-center items-center p-4 sm:p-6 text-center">
       <div className="max-w-md w-full bg-white border border-brand-border rounded-3xl p-8 sm:p-10 shadow-xs">

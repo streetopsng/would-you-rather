@@ -110,6 +110,7 @@ export function GameProvider({ children }) {
   const hostExitInProgressRef = useRef(false)
   const sessionEndedRef = useRef(false)
   const sessionSeenRef = useRef(false)
+  const buildReportRef = useRef(null)
   const [isSessionExpired, setIsSessionExpired] = useState(false)
   const [sessionCreatedAt, setSessionCreatedAt] = useState(null)
   const [sessionStatus, setSessionStatus] = useState('lobby')
@@ -438,7 +439,9 @@ export function GameProvider({ children }) {
           // A newer re-run owns the PIN's room now, so only mark it ended if it is still ours.
           const ownRoom = String(hubSession.id) === String(ggSession.hostedSessionId)
           const markEnded = ownRoom ? endSession(hubPin, { completed }).catch(() => {}) : Promise.resolve()
-          markEnded.finally(() => returnToGummyGum(hubUrl))
+          // A finished game ended from the hub still owes the hub its results.
+          const report = ownRoom && completed ? reportGummyGumResult(buildReportRef.current()) : Promise.resolve()
+          Promise.allSettled([markEnded, report]).finally(() => returnToGummyGum(hubUrl))
         } else {
           setAwaitingHost(false)
           setEndedCompleted(completed)
@@ -562,6 +565,10 @@ export function GameProvider({ children }) {
       leaderboard,
     }
   }
+
+  useEffect(() => {
+    buildReportRef.current = buildReport
+  })
 
   const hostEndSession = async () => {
     if (hostExitInProgressRef.current) return

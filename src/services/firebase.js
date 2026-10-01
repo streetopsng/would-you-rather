@@ -7,6 +7,8 @@ import {
   updateDoc,
   onSnapshot,
   serverTimestamp,
+  runTransaction,
+  FieldPath,
 } from 'firebase/firestore'
 import { getAnalytics, isSupported } from 'firebase/analytics'
 
@@ -212,16 +214,30 @@ export async function updateSession(sessionId, updates) {
 /**
  * Real Player Join in session
  *
- * Reads the live session doc first (not the local fallback cache, which is
- * never populated by the Firestore snapshot listener) so joining doesn't
- * clobber every other player already in the roster. A player rejoining with
- * the same email replaces their own stale entry rather than duplicating it.
+ * A player rejoining with the same email replaces their own stale entry
+ * rather than duplicating it. Runs as a transaction so players joining at
+ * the same moment don't overwrite each other's roster entry.
  */
 export async function joinSession(sessionId, playerData) {
-  const current = await getSession(sessionId) || { players: [] }
-  const existing = current.players || []
-  const filtered = existing.filter((p) => p.email !== playerData.email && p.id !== playerData.id)
-  const updatedPlayers = [...filtered, { ...playerData, joinedAt: new Date().toISOString() }]
+  await ensureFirebase()
+  const merge = (existing = []) => [
+    ...existing.filter((p) => p.email !== playerData.email && p.id !== playerData.id),
+    { ...playerData, joinedAt: new Date().toISOString() },
+  ]
+  if (isFirebaseConfigured && db) {
+    try {
+      const sessionRef = doc(db, 'sessions', sessionId)
+      return await runTransaction(db, async (tx) => {
+        const snapshot = await tx.get(sessionRef)
+        const updatedPlayers = merge(snapshot.exists() ? snapshot.data().players : [])
+        tx.update(sessionRef, { players: updatedPlayers, updatedAt: new Date().toISOString() })
+        return updatedPlayers
+      })
+    } catch (e) {
+      console.warn('[Firebase] joinSession failed, using local:', e)
+    }
+  }
+  const updatedPlayers = merge((localStore.get(sessionId) || {}).players)
   await updateSession(sessionId, { players: updatedPlayers })
   return updatedPlayers
 }
@@ -229,17 +245,22 @@ export async function joinSession(sessionId, playerData) {
 /**
  * Real Player Vote in session
  *
- * Same live-read requirement as joinSession — otherwise each recorded vote
- * would overwrite the votes map with only the current player's single vote.
+ * Writes only this player's field so concurrent votes never clobber each other.
  */
 export async function recordVote(sessionId, roundIndex, playerId, choice) {
-  const current = await getSession(sessionId) || { votes: {} }
-  const currentVotes = current.votes || {}
-  const roundVotes = currentVotes[roundIndex] || {}
-  const updatedRoundVotes = { ...roundVotes, [playerId]: choice }
-  const updatedVotes = { ...currentVotes, [roundIndex]: updatedRoundVotes }
+  await ensureFirebase()
+  if (isFirebaseConfigured && db) {
+    try {
+      const sessionRef = doc(db, 'sessions', sessionId)
+      await updateDoc(sessionRef, new FieldPath('votes', String(roundIndex), playerId), choice, 'updatedAt', new Date().toISOString())
+      return
+    } catch (e) {
+      console.warn('[Firebase] recordVote failed, using local:', e)
+    }
+  }
+  const currentVotes = (localStore.get(sessionId) || {}).votes || {}
+  const updatedVotes = { ...currentVotes, [roundIndex]: { ...(currentVotes[roundIndex] || {}), [playerId]: choice } }
   await updateSession(sessionId, { votes: updatedVotes })
-  return updatedVotes
 }
 
 /**
