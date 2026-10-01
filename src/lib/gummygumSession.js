@@ -75,6 +75,7 @@ export async function resolveGummyGumLaunch() {
     hostedSessionId,
     isHost: Boolean(body.data.isHost),
     invitedCount: body.data.invitedCount || null,
+    config: body.data.config || null,
     hubUrl,
     round: 1,
     reported: false,

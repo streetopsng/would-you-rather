@@ -110,6 +110,7 @@ export function GameProvider({ children }) {
   const hostExitInProgressRef = useRef(false)
   const sessionEndedRef = useRef(false)
   const sessionSeenRef = useRef(false)
+  const buildReportRef = useRef(null)
   const [isSessionExpired, setIsSessionExpired] = useState(false)
   const [sessionCreatedAt, setSessionCreatedAt] = useState(null)
   const [sessionStatus, setSessionStatus] = useState('lobby')
@@ -140,13 +141,18 @@ export function GameProvider({ children }) {
   }, [])
 
   // Build question list across categories
-  const buildQuestions = useCallback((rounds) => {
+  const buildQuestions = useCallback((rounds, hubCategory) => {
+    const withCat = (cat) => [...QUESTION_BANK[cat], ...(customQuestions[cat] || [])].map((q) => ({ ...q, cat }))
+    if (hubCategory === 'office') {
+      // Work alone can't fill every round count, so top up from the other categories.
+      const work = shuffle(withCat('Work')).slice(0, rounds)
+      const rest = shuffle(CATEGORIES.filter((c) => c !== 'Work').flatMap(withCat)).slice(0, rounds - work.length)
+      return [...work, ...rest]
+    }
     const perCat = Math.max(1, Math.floor(rounds / CATEGORIES.length))
     let pool = []
     CATEGORIES.forEach((cat) => {
-      const combined = [...QUESTION_BANK[cat], ...(customQuestions[cat] || [])]
-      const sliced = shuffle(combined).slice(0, perCat).map((q) => ({ ...q, cat }))
-      pool = pool.concat(sliced)
+      pool = pool.concat(shuffle(withCat(cat)).slice(0, perCat))
     })
     return shuffle(pool)
   }, [customQuestions])
@@ -248,13 +254,16 @@ export function GameProvider({ children }) {
             if (existing.invitedCount) setInvitedCount(existing.invitedCount)
             setCurrentScreen(screenForSessionStatus(existing.status))
           } else {
+            const hubConfig = launchSession?.config || {}
             const hostName = launchSession?.player?.name || queryName || 'Host'
-            setSessionName(`${hostName}'s Would You Rather`)
-            const qList = buildQuestions(15)
+            const name = hubConfig.name || `${hostName}'s Would You Rather`
+            const rounds = Number(hubConfig.roundCount) > 0 ? Number(hubConfig.roundCount) : 15
+            setSessionName(name)
+            const qList = buildQuestions(rounds, hubConfig.category)
             setSessionQuestions(qList)
             await createSession(code, {
-              name: `${hostName}'s Would You Rather`,
-              rounds: 15,
+              name,
+              rounds,
               questions: qList,
               invitedCount: invCount,
               hostedSessionId,
@@ -438,7 +447,9 @@ export function GameProvider({ children }) {
           // A newer re-run owns the PIN's room now, so only mark it ended if it is still ours.
           const ownRoom = String(hubSession.id) === String(ggSession.hostedSessionId)
           const markEnded = ownRoom ? endSession(hubPin, { completed }).catch(() => {}) : Promise.resolve()
-          markEnded.finally(() => returnToGummyGum(hubUrl))
+          // A finished game ended from the hub still owes the hub its results.
+          const report = ownRoom && completed ? reportGummyGumResult(buildReportRef.current()) : Promise.resolve()
+          Promise.allSettled([markEnded, report]).finally(() => returnToGummyGum(hubUrl))
         } else {
           setAwaitingHost(false)
           setEndedCompleted(completed)
@@ -511,8 +522,8 @@ export function GameProvider({ children }) {
 
   // Host starts the game
   const startHostGame = async () => {
-    if (joinedPlayers.length === 0) {
-      showToast('Wait for at least one teammate to join')
+    if (joinedPlayers.length < 2) {
+      showToast('Wait for at least 2 participants to join')
       return
     }
 
@@ -562,6 +573,10 @@ export function GameProvider({ children }) {
       leaderboard,
     }
   }
+
+  useEffect(() => {
+    buildReportRef.current = buildReport
+  })
 
   const hostEndSession = async () => {
     if (hostExitInProgressRef.current) return
