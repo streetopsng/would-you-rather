@@ -25,7 +25,8 @@ export default function HostLobby() {
     (queryInvited ? parseInt(queryInvited, 10) : null) ||
     Math.max(invited.length, joinedCount, 1)
   const pctJoined = totalCount > 0 ? Math.min(100, Math.round((joinedCount / totalCount) * 100)) : 0
-  const canStart = joinedCount >= 1
+  const MIN_PARTICIPANTS = 2
+  const canStart = joinedCount >= MIN_PARTICIPANTS
 
   return (
     <div className="w-full flex-1 flex flex-col">
@@ -124,7 +125,7 @@ export default function HostLobby() {
           <p className="text-center text-xs text-brand-muted max-w-sm leading-relaxed">
             {canStart
               ? `${joinedCount} teammate${joinedCount > 1 ? 's' : ''} in the lobby — ready to roll.`
-              : 'Waiting for at least one teammate to join before starting.'}
+              : `Waiting for at least ${MIN_PARTICIPANTS} participants (${joinedCount} joined)`}
           </p>
         </div>
       </main>

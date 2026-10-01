@@ -511,8 +511,8 @@ export function GameProvider({ children }) {
 
   // Host starts the game
   const startHostGame = async () => {
-    if (joinedPlayers.length === 0) {
-      showToast('Wait for at least one teammate to join')
+    if (joinedPlayers.length < 2) {
+      showToast('Wait for at least 2 participants to join')
       return
     }
 
