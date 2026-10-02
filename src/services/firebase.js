@@ -11,6 +11,7 @@ import {
   FieldPath,
 } from 'firebase/firestore'
 import { getAnalytics, isSupported } from 'firebase/analytics'
+import { getAuth, signInAnonymously } from 'firebase/auth'
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -32,11 +33,22 @@ export let isFirebaseConfigured = Boolean(
 let app = null
 let db = null
 export let analytics = null
+// Every Firestore call awaits this. It never rejects, so the app keeps working while rules are still open.
+let authReady = Promise.resolve()
+
+function signInAnon(firebaseApp) {
+  const auth = getAuth(firebaseApp)
+  return Promise.race([
+    auth.authStateReady().then(() => auth.currentUser || signInAnonymously(auth)),
+    new Promise((resolve) => setTimeout(resolve, 8000)),
+  ]).catch((err) => console.warn('[Firebase] Anonymous sign-in failed:', err))
+}
 
 function initFirebase(config) {
   try {
     app = getApps().length === 0 ? initializeApp(config) : getApps()[0]
     db = getFirestore(app)
+    authReady = signInAnon(app)
     isFirebaseConfigured = true
     if (typeof window !== 'undefined') {
       isSupported().then((supported) => {
@@ -56,7 +68,10 @@ if (isFirebaseConfigured) {
 
 // Fallback runtime loader for serverless environment configs without VITE_ prefix
 async function ensureFirebase() {
-  if (db) return db
+  if (db) {
+    await authReady
+    return db
+  }
   if (typeof window !== 'undefined') {
     try {
       const res = await fetch('/api/firebase-config')
@@ -64,6 +79,7 @@ async function ensureFirebase() {
         const conf = await res.json()
         if (conf.apiKey && conf.projectId) {
           initFirebase(conf)
+          await authReady
           return db
         }
       }
@@ -156,18 +172,18 @@ export async function getSession(sessionId) {
  */
 export function subscribeToSession(sessionId, callback) {
   if (isFirebaseConfigured && db) {
-    try {
-      const sessionRef = doc(db, 'sessions', sessionId)
-      const unsubscribe = onSnapshot(sessionRef, (snapshot) => {
-        if (snapshot.exists()) {
-          callback(snapshot.data())
-        } else {
-          callback(null)
-        }
+    const sessionRef = doc(db, 'sessions', sessionId)
+    let unsubscribe = null
+    let cancelled = false
+    authReady.then(() => {
+      if (cancelled) return
+      unsubscribe = onSnapshot(sessionRef, (snapshot) => {
+        callback(snapshot.exists() ? snapshot.data() : null)
       })
-      return unsubscribe
-    } catch (e) {
-      console.warn('[Firebase] subscribe failed, using local listener:', e)
+    })
+    return () => {
+      cancelled = true
+      if (unsubscribe) unsubscribe()
     }
   }
 
