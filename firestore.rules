@@ -1,0 +1,9 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Clients (and the GummyGum hub) sign in anonymously before touching the database.
+    match /sessions/{code}/{document=**} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}
