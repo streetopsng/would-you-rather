@@ -35,7 +35,7 @@ const SCREENS = {
 }
 
 function GameRouter() {
-  const { currentScreen, ggSession, ggChecked, awaitingHost, isCancelled, endedCompleted, isSessionExpired, sessionExpiredContext } = useGame()
+  const { currentScreen, ggSession, ggChecked, awaitingHost, connectError, isCancelled, endedCompleted, isSessionExpired, sessionExpiredContext } = useGame()
 
   if (!ggChecked) {
     return <LoadingScreen key="connecting" progressive />
@@ -47,6 +47,10 @@ function GameRouter() {
 
   if (!ggSession) {
     return <GummyGumLockedScreen />
+  }
+
+  if (connectError) {
+    return <LoadingScreen key="connect-error" message="We couldn't reach the game server. Check your connection and refresh this page." />
   }
 
   if (awaitingHost) {

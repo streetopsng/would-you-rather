@@ -95,6 +95,8 @@ export function GameProvider({ children }) {
   const [ggChecked, setGgChecked] = useState(false)
   const [isCancelled, setIsCancelled] = useState(false)
   const [awaitingHost, setAwaitingHost] = useState(false)
+  const [connectError, setConnectError] = useState(false)
+  const hostWriteBusyRef = useRef(false)
   const [endedCompleted, setEndedCompleted] = useState(false)
   const [isEndSessionModalOpen, setIsEndSessionModalOpen] = useState(false)
   const [isEndingSession, setIsEndingSession] = useState(false)
@@ -192,7 +194,14 @@ export function GameProvider({ children }) {
         routedRef.current = true
         setIsSessionExpired(false)
 
-        let existing = await getSession(code).catch(() => null)
+        let existing = null
+        try {
+          existing = await getSession(code)
+        } catch {
+          // Treating a failed read as "no room" would let the host recreate, and wipe, a game in progress.
+          setConnectError(true)
+          return
+        }
         const hostedSessionId = launchSession?.hostedSessionId || null
         let fromEarlierRoom = isFromEarlierRoom(existing, hostedSessionId)
         if (!isHost && hostedSessionId && (!existing || fromEarlierRoom)) {
@@ -251,15 +260,20 @@ export function GameProvider({ children }) {
             setSessionName(name)
             const qList = buildQuestions(rounds, hubConfig.category)
             setSessionQuestions(qList)
-            await createSession(code, {
-              name,
-              rounds,
-              questions: qList,
-              invitedCount: invCount,
-              hostedSessionId,
-              status: 'lobby',
-              createdAt: Date.now(),
-            }).catch(() => {})
+            try {
+              await createSession(code, {
+                name,
+                rounds,
+                questions: qList,
+                invitedCount: invCount,
+                hostedSessionId,
+                status: 'lobby',
+                createdAt: Date.now(),
+              })
+            } catch {
+              setConnectError(true)
+              return
+            }
             setCurrentScreen('host-lobby')
           }
         } else if (existing && (existing.status === 'ended' || existing.status === 'cancelled')) {
@@ -415,6 +429,22 @@ export function GameProvider({ children }) {
     return () => clearInterval(interval)
   }, [sessionStatus, sessionCreatedAt])
 
+  // The host screen only moves once the room has, so it can never run ahead of the players.
+  const hostWrite = async (updates) => {
+    if (hostWriteBusyRef.current) return false
+    hostWriteBusyRef.current = true
+    try {
+      if (sessionId) await updateSession(sessionId, updates)
+      return true
+    } catch (e) {
+      console.warn('[WYR] host update failed:', e)
+      showToast("Couldn't reach the game server. Check your connection and try again.")
+      return false
+    } finally {
+      hostWriteBusyRef.current = false
+    }
+  }
+
   // Host starts the game
   const startHostGame = async () => {
     if (joinedPlayers.length < 2) {
@@ -422,35 +452,27 @@ export function GameProvider({ children }) {
       return
     }
 
+    if (!(await hostWrite({ status: 'in-progress', currentRound: 0 }))) return
     setHostQIdx(0)
     setIsRevealed(false)
-    if (sessionId) {
-      await updateSession(sessionId, { status: 'in-progress', currentRound: 0 })
-    }
     setCurrentScreen('host-control')
   }
 
   const revealHostResults = async () => {
+    if (!(await hostWrite({ status: 'revealed' }))) return
     setIsRevealed(true)
-    if (sessionId) {
-      await updateSession(sessionId, { status: 'revealed' })
-    }
   }
 
   const nextHostQuestion = async () => {
     const nextIdx = hostQIdx + 1
     if (nextIdx >= sessionQuestions.length) {
-      if (sessionId) {
-        await updateSession(sessionId, { status: 'finished' })
-      }
+      if (!(await hostWrite({ status: 'finished' }))) return
       setSessionStatus('finished')
       setCurrentScreen('host-finish')
     } else {
+      if (!(await hostWrite({ currentRound: nextIdx, status: 'in-progress' }))) return
       setHostQIdx(nextIdx)
       setIsRevealed(false)
-      if (sessionId) {
-        await updateSession(sessionId, { currentRound: nextIdx, status: 'in-progress' })
-      }
     }
   }
 
@@ -510,7 +532,10 @@ export function GameProvider({ children }) {
     try {
       await joinSession(cleanId, newPlayer)
     } catch (e) {
-      console.warn('[WYR] join failed, entering lobby anyway:', e)
+      console.warn('[WYR] join failed:', e)
+      showToast("Couldn't join the game. Check your connection and try again.")
+      setCurrentScreen('player-identity')
+      return
     }
 
     setTimeout(() => {
@@ -536,7 +561,14 @@ export function GameProvider({ children }) {
     // Record real vote in Firestore
     const cleanId = sessionId || (sessionName.trim() || 'team-session').toLowerCase().replace(/[^a-z0-9]/g, '-')
     const pId = player.id || player.name || 'anonymous_player'
-    await recordVote(cleanId, playerQIdx, pId, choice)
+    try {
+      await recordVote(cleanId, playerQIdx, pId, choice)
+    } catch (e) {
+      console.warn('[WYR] vote failed:', e)
+      setPlayerChoice(null)
+      showToast("Your vote didn't send. Check your connection and tap again.")
+      return
+    }
 
     setTimeout(() => {
       setCurrentScreen('player-results')
@@ -596,6 +628,7 @@ export function GameProvider({ children }) {
         ggSession,
         ggChecked,
         awaitingHost,
+        connectError,
         isCancelled,
         endedCompleted,
         isSessionExpired,
