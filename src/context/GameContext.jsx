@@ -13,7 +13,6 @@ import {
   endSession,
   isFirebaseConfigured,
 } from '../services/firebase'
-import { sendBulkGameInvites, isBrevoConfigured } from '../services/brevo'
 import { GameContext } from './GameContextBase'
 import {
   resolveGummyGumLaunch,
@@ -23,7 +22,7 @@ import {
   reportGummyGumCancel,
   watchHubSessionStatus,
 } from '../lib/gummygumSession'
-import { isAvatarId, randomAvatarId } from '../lib/avatars'
+import { isAvatarId } from '../lib/avatars'
 
 
 // Hours, not the lobby's 20 min: a mid-game session with no connected client
@@ -75,21 +74,14 @@ function shuffle(array) {
 
 export function GameProvider({ children }) {
   // Screen management
-  const [currentScreen, setCurrentScreen] = useState('homepage')
+  const [currentScreen, setCurrentScreen] = useState('loading')
   const [toastMessage, setToastMessage] = useState('')
   const toastTimeoutRef = useRef(null)
 
   // Session Config
   const [sessionName, setSessionName] = useState('Team Bonding')
-  const [roundCount, setRoundCount] = useState(15)
-  const [participants, setParticipants] = useState([])
-  const [customQuestions, setCustomQuestions] = useState({
-    Fun: [],
-    Work: [],
-    Personality: [],
-    Lifestyle: [],
-    Silly: [],
-  })
+  const roundCount = 15
+  const participants = []
 
   // Questions for active session
   const [sessionQuestions, setSessionQuestions] = useState([])
@@ -128,9 +120,6 @@ export function GameProvider({ children }) {
   const [playerQIdx, setPlayerQIdx] = useState(0)
   const [playerChoice, setPlayerChoice] = useState(null)
 
-  // Modals
-  const [isCustomQModalOpen, setIsCustomQModalOpen] = useState(false)
-
   // Toast Notification helper
   const showToast = useCallback((msg) => {
     if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current)
@@ -142,7 +131,7 @@ export function GameProvider({ children }) {
 
   // Build question list across categories
   const buildQuestions = useCallback((rounds, hubCategory) => {
-    const withCat = (cat) => [...QUESTION_BANK[cat], ...(customQuestions[cat] || [])].map((q) => ({ ...q, cat }))
+    const withCat = (cat) => QUESTION_BANK[cat].map((q) => ({ ...q, cat }))
     if (hubCategory === 'office') {
       // Work alone can't fill every round count, so top up from the other categories.
       const work = shuffle(withCat('Work')).slice(0, rounds)
@@ -155,7 +144,7 @@ export function GameProvider({ children }) {
       pool = pool.concat(shuffle(withCat(cat)).slice(0, perCat))
     })
     return shuffle(pool)
-  }, [customQuestions])
+  }, [])
 
   // Derive a stable, per-room player id from the GummyGum-verified email so a
   // closed-tab/refresh rejoin reclaims the SAME player (and their votes)
@@ -317,56 +306,6 @@ export function GameProvider({ children }) {
     })
   }, [buildQuestions])
 
-  // Real participant management
-  const addParticipant = (name, email, dept = 'Team') => {
-    if (!name.trim() || !email.trim()) {
-      showToast('Name and email are required')
-      return false
-    }
-    const newParticipant = {
-      id: 'p_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
-      name: name.trim(),
-      email: email.trim().toLowerCase(),
-      dept: dept.trim() || 'Team',
-      av: randomAvatarId(),
-      selected: true,
-      joined: false,
-    }
-    setParticipants((prev) => [...prev, newParticipant])
-    showToast(`Added ${newParticipant.name} to the team`)
-    return true
-  }
-
-  const removeParticipant = (id) => {
-    setParticipants((prev) => prev.filter((p) => p.id !== id))
-  }
-
-  const toggleParticipant = (id) => {
-    setParticipants((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, selected: !p.selected } : p))
-    )
-  }
-
-  const selectAllParticipants = () => {
-    const allSelected = participants.length > 0 && participants.every((p) => p.selected)
-    setParticipants((prev) => prev.map((p) => ({ ...p, selected: !allSelected })))
-  }
-
-  // Add custom question
-  const addCustomQuestion = (cat, a, b) => {
-    if (!a.trim() || !b.trim()) {
-      showToast('Please fill in both options')
-      return false
-    }
-    setCustomQuestions((prev) => ({
-      ...prev,
-      [cat]: [...(prev[cat] || []), { a: a.trim(), b: b.trim() }],
-    }))
-    showToast(`Added to ${cat} — it can appear in this session!`)
-    setIsCustomQModalOpen(false)
-    return true
-  }
-
   // Subscribe to real-time session changes when sessionId is active
   useEffect(() => {
     if (!sessionId) return
@@ -476,51 +415,6 @@ export function GameProvider({ children }) {
     return () => clearInterval(interval)
   }, [sessionStatus, sessionCreatedAt])
 
-  // Launch Session from Host Setup
-  const launchHostSession = async () => {
-    const selected = participants.filter((p) => p.selected)
-    if (!selected.length) {
-      showToast('Select at least one teammate to invite')
-      return
-    }
-
-    const qList = buildQuestions(roundCount)
-    setSessionQuestions(qList)
-
-    const cleanId = (sessionName.trim() || 'team-session')
-      .toLowerCase()
-      .replace(/[^a-z0-9]/g, '-')
-    setSessionId(cleanId)
-
-    // Create real session in Firestore / Database
-    await createSession(cleanId, {
-      name: sessionName.trim(),
-      rounds: roundCount,
-      questions: qList,
-      invitedParticipants: selected,
-      players: [],
-      votes: {},
-      status: 'lobby',
-      createdAt: Date.now(),
-    })
-
-    // Dispatch real email invites through Brevo
-    const inviteUrl = window.location.origin
-    sendBulkGameInvites({
-      participants: selected,
-      sessionName: sessionName.trim(),
-      gameUrl: inviteUrl,
-    }).then((res) => {
-      if (res.isSimulated) {
-        showToast(`Invites prepared for ${selected.length} teammates`)
-      } else {
-        showToast(`Invites dispatched via Brevo to ${res.succeeded}/${selected.length} teammates`)
-      }
-    })
-
-    setCurrentScreen('host-lobby')
-  }
-
   // Host starts the game
   const startHostGame = async () => {
     if (joinedPlayers.length < 2) {
@@ -594,20 +488,6 @@ export function GameProvider({ children }) {
   }
 
   // Player Flow
-  const initPlayerFlow = () => {
-    if (!sessionQuestions.length) {
-      setSessionQuestions(buildQuestions(roundCount))
-    }
-    setPlayerEmail('')
-    setPlayer({ id: '', name: '', av: '', email: '' })
-    setCurrentScreen('player-home')
-  }
-
-  const submitPlayerEmailInput = (email) => {
-    setPlayerEmail(email)
-    setCurrentScreen('player-identity')
-  }
-
   const savePlayerIdentity = async (name, av) => {
     if (sessionEndedRef.current) return
     const pId = stablePlayerId(playerEmail)
@@ -685,16 +565,7 @@ export function GameProvider({ children }) {
         toastMessage,
         showToast,
         sessionName,
-        setSessionName,
-        roundCount,
-        setRoundCount,
         participants,
-        addParticipant,
-        removeParticipant,
-        toggleParticipant,
-        selectAllParticipants,
-        customQuestions,
-        addCustomQuestion,
         sessionQuestions,
         sessionId,
         joinedPlayers,
@@ -702,7 +573,6 @@ export function GameProvider({ children }) {
         // Host
         hostQIdx,
         isRevealed,
-        launchHostSession,
         startHostGame,
         revealHostResults,
         nextHostQuestion,
@@ -711,8 +581,6 @@ export function GameProvider({ children }) {
         player,
         playerQIdx,
         playerChoice,
-        initPlayerFlow,
-        submitPlayerEmailInput,
         savePlayerIdentity,
         startPlayerGame,
         answerPlayerQuestion,
@@ -722,11 +590,8 @@ export function GameProvider({ children }) {
         setIsEndSessionModalOpen,
         isEndingSession,
         hostEndSession,
-        isCustomQModalOpen,
-        setIsCustomQModalOpen,
         // Config statuses
         isFirebaseConfigured,
-        isBrevoConfigured,
         // GummyGum Integration
         ggSession,
         ggChecked,

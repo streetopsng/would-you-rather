@@ -2,31 +2,16 @@ import React from 'react'
 import { describe, it, expect } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { GameProvider } from '../context/GameContext'
-import HostHome from '../components/host/HostHome'
-import PlayerHome from '../components/player/PlayerHome'
+import LoadingScreen from '../components/common/LoadingScreen'
 import Navbar from '../components/common/Navbar'
 
 describe('Component Rendering', () => {
-  it('renders HostHome with title and CTA', () => {
-    render(
-      <GameProvider>
-        <HostHome />
-      </GameProvider>
-    )
+  it('renders the loading screen without a way out to a landing page', () => {
+    render(<LoadingScreen progressive />)
 
-    expect(screen.getByText(/Would You/i)).toBeInTheDocument()
-    expect(screen.getByText(/Create a game/i)).toBeInTheDocument()
-  })
-
-  it('renders PlayerHome with invitation banner', () => {
-    render(
-      <GameProvider>
-        <PlayerHome />
-      </GameProvider>
-    )
-
-    expect(screen.getByText(/You're invited/i)).toBeInTheDocument()
-    expect(screen.getByText(/Join the game/i)).toBeInTheDocument()
+    expect(screen.getByText('Loading…')).toBeInTheDocument()
+    expect(screen.queryByRole('link')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button')).not.toBeInTheDocument()
   })
 
   it('renders Navbar with GummyGum branding', () => {
