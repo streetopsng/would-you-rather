@@ -117,6 +117,25 @@ function broadcastLocalUpdate(sessionId, data) {
   }
 }
 
+const WRITE_ATTEMPTS = 5
+const RETRY_DELAY_MS = 1000
+
+// Live writes are retried and then thrown; falling back to the local store would leave every other device on the old screen.
+async function withRetry(label, write) {
+  let lastError = null
+  for (let attempt = 0; attempt < WRITE_ATTEMPTS; attempt++) {
+    try {
+      return await write(attempt)
+    } catch (e) {
+      lastError = e
+      console.warn(`[Firebase] ${label} failed (attempt ${attempt + 1}):`, e)
+      if (e?.code === 'permission-denied' || e?.code === 'not-found') break
+      if (attempt < WRITE_ATTEMPTS - 1) await new Promise((r) => setTimeout(r, RETRY_DELAY_MS))
+    }
+  }
+  throw lastError
+}
+
 /**
  * Create or initialize a game session
  */
@@ -133,16 +152,19 @@ export async function createSession(sessionId, sessionData) {
   }
 
   if (isFirebaseConfigured && db) {
-    try {
-      const sessionRef = doc(db, 'sessions', sessionId)
+    const sessionRef = doc(db, 'sessions', sessionId)
+    await withRetry('createSession', async (attempt) => {
+      if (attempt > 0) {
+        // An earlier attempt may have landed; rewriting it would wipe players who joined since.
+        const snapshot = await getDoc(sessionRef)
+        if (snapshot.exists() && snapshot.data().createdAt === payload.createdAt) return
+      }
       await setDoc(sessionRef, {
         ...payload,
         serverTimestamp: serverTimestamp(),
       })
-      return payload
-    } catch (e) {
-      console.warn('[Firebase] createSession failed, using local sync:', e)
-    }
+    })
+    return payload
   }
 
   broadcastLocalUpdate(sessionId, payload)
@@ -156,13 +178,9 @@ export async function createSession(sessionId, sessionData) {
 export async function getSession(sessionId) {
   await ensureFirebase()
   if (isFirebaseConfigured && db) {
-    try {
-      const sessionRef = doc(db, 'sessions', sessionId)
-      const snapshot = await getDoc(sessionRef)
-      return snapshot.exists() ? snapshot.data() : null
-    } catch (e) {
-      console.warn('[Firebase] getSession failed, using local sync:', e)
-    }
+    const sessionRef = doc(db, 'sessions', sessionId)
+    const snapshot = await withRetry('getSession', () => getDoc(sessionRef))
+    return snapshot.exists() ? snapshot.data() : null
   }
   return localStore.get(sessionId) || null
 }
@@ -210,16 +228,12 @@ export function subscribeToSession(sessionId, callback) {
 export async function updateSession(sessionId, updates) {
   await ensureFirebase()
   if (isFirebaseConfigured && db) {
-    try {
-      const sessionRef = doc(db, 'sessions', sessionId)
-      await updateDoc(sessionRef, {
-        ...updates,
-        updatedAt: new Date().toISOString(),
-      })
-      return
-    } catch (e) {
-      console.warn('[Firebase] updateSession failed, using local:', e)
-    }
+    const sessionRef = doc(db, 'sessions', sessionId)
+    await withRetry('updateSession', () => updateDoc(sessionRef, {
+      ...updates,
+      updatedAt: new Date().toISOString(),
+    }))
+    return
   }
 
   const current = localStore.get(sessionId) || {}
@@ -243,7 +257,8 @@ export async function joinSession(sessionId, playerData) {
   if (isFirebaseConfigured && db) {
     const sessionRef = doc(db, 'sessions', sessionId)
     // A burst of votes can exhaust the SDK's own retries; dropping the join would leave the player off the roster.
-    for (let attempt = 0; attempt < 3; attempt++) {
+    let lastError = null
+    for (let attempt = 0; attempt < WRITE_ATTEMPTS; attempt++) {
       try {
         return await runTransaction(db, async (tx) => {
           const snapshot = await tx.get(sessionRef)
@@ -252,11 +267,14 @@ export async function joinSession(sessionId, playerData) {
           return updatedPlayers
         })
       } catch (e) {
+        lastError = e
         console.warn('[Firebase] joinSession failed:', e)
         if (e?.code !== 'failed-precondition' && e?.code !== 'aborted') break
         await new Promise((r) => setTimeout(r, 500 * (attempt + 1)))
       }
     }
+    // Writing a locally merged roster here would replace everyone else's entry.
+    throw lastError
   }
   const updatedPlayers = merge((localStore.get(sessionId) || {}).players)
   await updateSession(sessionId, { players: updatedPlayers })
@@ -271,13 +289,11 @@ export async function joinSession(sessionId, playerData) {
 export async function recordVote(sessionId, roundIndex, playerId, choice) {
   await ensureFirebase()
   if (isFirebaseConfigured && db) {
-    try {
-      const sessionRef = doc(db, 'sessions', sessionId)
-      await updateDoc(sessionRef, new FieldPath('votes', String(roundIndex), playerId), choice, 'updatedAt', new Date().toISOString())
-      return
-    } catch (e) {
-      console.warn('[Firebase] recordVote failed, using local:', e)
-    }
+    const sessionRef = doc(db, 'sessions', sessionId)
+    await withRetry('recordVote', () =>
+      updateDoc(sessionRef, new FieldPath('votes', String(roundIndex), playerId), choice, 'updatedAt', new Date().toISOString())
+    )
+    return
   }
   const currentVotes = (localStore.get(sessionId) || {}).votes || {}
   const updatedVotes = { ...currentVotes, [roundIndex]: { ...(currentVotes[roundIndex] || {}), [playerId]: choice } }
@@ -291,13 +307,9 @@ export async function endSession(sessionId, { completed = false } = {}) {
   await ensureFirebase()
   const updates = { status: 'ended', endedAt: Date.now(), completed, updatedAt: new Date().toISOString() }
   if (isFirebaseConfigured && db) {
-    try {
-      const sessionRef = doc(db, 'sessions', sessionId)
-      await updateDoc(sessionRef, updates)
-      return
-    } catch (e) {
-      console.warn('[Firebase] endSession error:', e)
-    }
+    const sessionRef = doc(db, 'sessions', sessionId)
+    await withRetry('endSession', () => updateDoc(sessionRef, updates))
+    return
   }
   broadcastLocalUpdate(sessionId, { ...(localStore.get(sessionId) || {}), ...updates })
 }
