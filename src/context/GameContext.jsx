@@ -227,8 +227,9 @@ export function GameProvider({ children }) {
           }
         }
 
+        // Host only: every player writing the session doc kept colliding with joinSession's transaction.
         setInterval(() => {
-          if (!sessionEndedRef.current && IN_GAME_STATUSES.includes(sessionStatusRef.current)) {
+          if (isHost && !sessionEndedRef.current && IN_GAME_STATUSES.includes(sessionStatusRef.current)) {
             updateSession(code, { lastActivity: Date.now() }).catch(() => {})
           }
         }, HEARTBEAT_INTERVAL_MS)

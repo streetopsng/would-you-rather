@@ -241,16 +241,21 @@ export async function joinSession(sessionId, playerData) {
     { ...playerData, joinedAt: new Date().toISOString() },
   ]
   if (isFirebaseConfigured && db) {
-    try {
-      const sessionRef = doc(db, 'sessions', sessionId)
-      return await runTransaction(db, async (tx) => {
-        const snapshot = await tx.get(sessionRef)
-        const updatedPlayers = merge(snapshot.exists() ? snapshot.data().players : [])
-        tx.update(sessionRef, { players: updatedPlayers, updatedAt: new Date().toISOString() })
-        return updatedPlayers
-      })
-    } catch (e) {
-      console.warn('[Firebase] joinSession failed, using local:', e)
+    const sessionRef = doc(db, 'sessions', sessionId)
+    // A burst of votes can exhaust the SDK's own retries; dropping the join would leave the player off the roster.
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        return await runTransaction(db, async (tx) => {
+          const snapshot = await tx.get(sessionRef)
+          const updatedPlayers = merge(snapshot.exists() ? snapshot.data().players : [])
+          tx.update(sessionRef, { players: updatedPlayers, updatedAt: new Date().toISOString() })
+          return updatedPlayers
+        })
+      } catch (e) {
+        console.warn('[Firebase] joinSession failed:', e)
+        if (e?.code !== 'failed-precondition' && e?.code !== 'aborted') break
+        await new Promise((r) => setTimeout(r, 500 * (attempt + 1)))
+      }
     }
   }
   const updatedPlayers = merge((localStore.get(sessionId) || {}).players)
